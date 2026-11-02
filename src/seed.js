@@ -71,7 +71,7 @@ export function emptyData() {
   return {
     settings: { ...defaultSettings },
     categories: [], menu: [], tables: [], orders: [], kots: [], ingredients: [], stockLog: [],
-    suppliers: [], purchases: [], customers: [], staff: [], expenses: [], counters: { order: 1, kot: 1, bill: 1 },
+    suppliers: [], purchases: [], customers: [], staff: [], expenses: [], reservations: [], dayCloses: [], counters: { order: 1, kot: 1, bill: 1 },
   };
 }
 
@@ -149,6 +149,11 @@ export function seed({ history = true } = {}) {
 
   return {
     settings, categories, menu, tables, orders, kots: [], ingredients, stockLog: [],
-    suppliers, purchases: [], customers, staff, expenses, counters: { order: no, kot: 1, bill: no },
+    suppliers, purchases: [], customers, staff, expenses, dayCloses: [],
+    reservations: [
+      { id: 'rv1', name: 'Rahul Mehta', phone: '9811111111', pax: 4, at: Date.now() + 2 * 3600000, tableId: 't2', note: 'Birthday – needs cake table', status: 'booked' },
+      { id: 'rv2', name: 'Anita Corporate', phone: '9899999999', pax: 8, at: Date.now() + 26 * 3600000, tableId: 'f1', note: '', status: 'booked' },
+    ],
+    counters: { order: no, kot: 1, bill: no },
   };
 }

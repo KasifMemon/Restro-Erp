@@ -89,7 +89,7 @@ table{width:100%;border-collapse:collapse}td,th{padding:1px 0;vertical-align:top
 
 const money = (n) => (Number(n) || 0).toFixed(2);
 
-export function receiptHTML(order, s, tableName, totals) {
+export function receiptHTML(order, s, tableName, totals, qr) {
   const t = totals || order.totals;
   const lines = order.items.filter((l) => l.qty > 0);
   const rates = Object.entries(t.taxByRate || {});
@@ -118,7 +118,7 @@ ${Math.abs(t.round) > 0.004 ? `<div class="row"><span>Round off</span><span>${mo
 <div class="hr"></div>
 ${(order.payments || []).map((p) => `<div class="row"><span>Paid by ${p.mode.toUpperCase()}</span><span>${money(p.amount)}</span></div>`).join('')}
 ${order.due ? `<div class="row"><span>Credit / Due</span><span>${money(order.due)}</span></div>` : ''}
-${s.upiId && !order.payments?.length ? `<div class="c">Pay via UPI: ${s.upiId}</div>` : ''}
+${s.upiId && !order.payments?.length ? `<div class="c">Pay via UPI: ${s.upiId}</div>${qr ? `<div class="c"><img src="${qr}" width="150" height="150"/></div>` : ''}` : ''}
 <div class="hr"></div>
 <div class="c">${s.footer || ''}</div>
 </body></html>`;

@@ -11,3 +11,8 @@ createRoot(document.getElementById('root')).render(
     </StoreProvider>
   </React.StrictMode>
 );
+
+// Installable + works offline (only over http/https, e.g. on Vercel)
+if (import.meta.env.PROD && 'serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}

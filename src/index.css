@@ -2,8 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root { height: 100%; }
-body { @apply bg-stone-100 text-stone-800 antialiased; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+html, body { height: 100%; }
+#root { height: 100vh; height: 100dvh; }
+body { @apply bg-[#f7f5f2] text-stone-800 antialiased; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+button { touch-action: manipulation; }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 8px; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
 input[type=number]::-webkit-inner-spin-button { opacity: .4; }
+@media (max-width: 640px) { input, select, textarea { font-size: 16px !important; } }
+@keyframes sheet { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.sheet-in { animation: sheet .18s ease-out; }
+@keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+.shake { animation: shake .3s; }

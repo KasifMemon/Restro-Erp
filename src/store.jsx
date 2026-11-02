@@ -6,10 +6,16 @@ const KEY = 'restro-erp-v1';
 const Ctx = createContext(null);
 export const useStore = () => useContext(Ctx);
 
+// fill in anything missing (older saves / backups) so new modules never crash
+export function normalize(o) {
+  const b = emptyData();
+  return { ...b, ...o, settings: { ...b.settings, ...(o.settings || {}) }, counters: { ...b.counters, ...(o.counters || {}) } };
+}
+
 function load() {
   try {
     const s = localStorage.getItem(KEY);
-    if (s) return JSON.parse(s);
+    if (s) return normalize(JSON.parse(s));
   } catch (e) { /* ignore */ }
   return seed();
 }
@@ -29,7 +35,7 @@ export function StoreProvider({ children }) {
     ref.current = n;
     setData(n);
   };
-  const replaceAll = (obj) => { ref.current = obj; setData(obj); };
+  const replaceAll = (obj) => { const n = normalize(obj); ref.current = n; setData(n); };
   const get = () => ref.current;
 
   const api = {
@@ -128,6 +134,24 @@ export function StoreProvider({ children }) {
     },
     kotStatus(id, status) {
       update((d) => { const k = d.kots.find((x) => x.id === id); if (k) { k.status = status; k[status + 'At'] = Date.now(); } });
+    },
+    moveTable(orderId, tableId) {
+      update((d) => {
+        const o = d.orders.find((x) => x.id === orderId);
+        if (!o) return;
+        o.tableId = tableId;
+        const tb = d.tables.find((t) => t.id === tableId);
+        d.kots.forEach((k) => { if (k.orderId === orderId && k.status !== 'served') k.label = 'Table ' + (tb?.name || '?'); });
+      });
+    },
+    voidBill(orderId, reason) {
+      update((d) => {
+        const o = d.orders.find((x) => x.id === orderId);
+        if (!o || o.status !== 'paid') return;
+        o.status = 'void'; o.voidReason = reason; o.voidedAt = Date.now();
+        const c = d.customers.find((x) => x.id === o.customerId);
+        if (c) { c.due = Math.max(0, c.due - (o.due || 0)); c.points = Math.max(0, c.points - Math.floor(o.totals.total / 100)); }
+      });
     },
     cancelOrder(orderId) {
       update((d) => {
