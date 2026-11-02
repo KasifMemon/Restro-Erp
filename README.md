@@ -62,3 +62,8 @@ Important limitations: this is a client-side local administration console, not a
 ## v3.5 — Secure Developer Portal
 
 The Business admin page is now protected by Supabase Auth and a server-side developer allow-list. Follow `SUPABASE-SETUP.md` and `.env.example` before using the portal. No service-role key belongs in the browser. Customer/subscription records remain local in this release; shared backend licensing is a separate next phase.
+
+
+## v3.6 Modern Pro UI refresh
+
+The application shell has been refreshed with a navy-and-teal visual identity, redesigned desktop navigation, clearer workspace header, local testing-mode indicator, improved mobile module navigation, and teal-accented shared controls. Existing restaurant workflows and local data model are retained. This is a visual refresh; it does not add cloud sync or production licensing infrastructure.
