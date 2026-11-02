@@ -29,3 +29,11 @@ docs/USER-GUIDE.md is written for the restaurant owner.
 
 ## Not built yet
 Cloud sync / multi-device (Firebase), licence & multi-tenant management, Hindi/Gujarati UI translation, Zomato/Swiggy integration, QR table ordering, LAN-printer agent.
+
+## v3.1 offline administration additions
+- Language preference: English, Gujarati and Hindi. The main navigation labels are translated; individual business screens still contain English labels and need a full translation pass.
+- Local outlet directory in Settings → Business admin. It stores outlet contact/profile records on this device. It does not yet isolate orders, stock, staff, or reports by outlet and does not sync between branches.
+- Local licence-key record and format check. This is not secure licence enforcement; production activation needs signed keys or a licensing service.
+- Integration URL setting and basic local system diagnostics. No delivery aggregator, payment, WhatsApp, or online-ordering API is connected.
+
+Cloud database and cross-device sync remain intentionally out of scope. This build must not be marketed as a production multi-branch ERP until outlet-level data isolation, full translations, and end-to-end testing are completed.
