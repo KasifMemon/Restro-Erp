@@ -6,6 +6,7 @@ import { fileToLogo, uid } from '../utils.js';
 import { receiptDoc, renderHTML, sampleOrder } from '../print.js';
 import PrinterTab from './PrinterTab.jsx';
 import BackupTab from './BackupTab.jsx';
+import AdminTab from './AdminTab.jsx';
 
 const Toggle = ({ label, checked, onChange, hint }) => (
   <label className="flex cursor-pointer items-start gap-3 py-1.5 text-sm">
@@ -20,7 +21,7 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Settings" sub="Business profile, bill, printers, tables and backups" />
       <div className="no-scrollbar -mx-4 mb-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:px-0">
-        {[['business', 'Business'], ['receipt', 'Bill & receipt'], ['printers', 'Printers'], ['tables', 'Tables'], ['backup', 'Backup & data']].map(([k, n]) => (
+        {[['business', 'Business'], ['receipt', 'Bill & receipt'], ['printers', 'Printers'], ['tables', 'Tables'], ['backup', 'Backup & data'], ['admin', 'Business admin']].map(([k, n]) => (
           <Chip key={k} active={tab === k} onClick={() => setTab(k)}>{n}</Chip>
         ))}
       </div>
@@ -29,6 +30,7 @@ export default function SettingsPage() {
       {tab === 'printers' && <PrinterTab />}
       {tab === 'tables' && <TablesTab />}
       {tab === 'backup' && <BackupTab />}
+      {tab === 'admin' && <AdminTab />}
     </>
   );
 }
@@ -60,6 +62,7 @@ function BusinessTab() {
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickLogo} />
           </div>
         </div>
+        <Field label="App language"><select className={inputCls} value={st.language || 'en'} onChange={(e) => set({ language: e.target.value })}><option value="en">English</option><option value="gu">ગુજરાતી (Gujarati)</option><option value="hi">हिन्दी (Hindi)</option></select></Field>
         <Field label="Restaurant name"><input className={inputCls} value={st.name} onChange={(e) => set({ name: e.target.value })} /></Field>
         <Field label="Address"><input className={inputCls} value={st.address} onChange={(e) => set({ address: e.target.value })} /></Field>
         <div className="grid grid-cols-2 gap-3">
