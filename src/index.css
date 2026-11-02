@@ -2,12 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+:root { color-scheme: light; --restro-ink: #172b3a; --restro-teal: #087f72; --restro-bg: #f3f6f5; }
 html, body { height: 100%; }
 #root { height: 100vh; height: 100dvh; }
-body { @apply bg-[#f7f5f2] text-stone-800 antialiased; font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+body { @apply antialiased; background: var(--restro-bg); color: #263746; font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
 button { touch-action: manipulation; }
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 8px; }
+::-webkit-scrollbar-thumb { background: #cbd5d8; border-radius: 8px; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
 input[type=number]::-webkit-inner-spin-button { opacity: .4; }
@@ -16,3 +17,34 @@ input[type=number]::-webkit-inner-spin-button { opacity: .4; }
 .sheet-in { animation: sheet .18s ease-out; }
 @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
 .shake { animation: shake .3s; }
+
+/* RestroERP Modern Pro visual system */
+.restro-shell { background: #f3f6f5; }
+.restro-sidebar { background: linear-gradient(180deg, #142a3a 0%, #102433 100%); color: #dbe5e9; box-shadow: 8px 0 30px rgba(20,42,58,.06); }
+.restro-brand-mark { display:flex; width:42px; height:42px; align-items:center; justify-content:center; border-radius:14px; color:#082c2a; background:linear-gradient(135deg,#8de0d0,#36b8a6); box-shadow:0 7px 20px rgba(54,184,166,.18); }
+.restro-nav-item { display:flex; width:100%; align-items:center; gap:12px; border:1px solid transparent; border-radius:12px; padding:10px 12px; color:#a9bac4; font-size:12px; font-weight:550; transition:all .16s ease; }
+.restro-nav-item:hover { background:rgba(255,255,255,.055); color:#fff; }
+.restro-nav-item.active { background:linear-gradient(90deg,rgba(74,196,177,.19),rgba(74,196,177,.08)); border-color:rgba(102,218,197,.16); color:#f4fffd; box-shadow:inset 3px 0 #54c9b5; }
+.restro-nav-item.active svg { color:#76ddca; }
+.restro-topbar { min-height:68px; background:rgba(255,255,255,.92); border-bottom:1px solid #e5ecea; box-shadow:0 3px 14px rgba(25,48,59,.025); }
+.restro-content { background:radial-gradient(ellipse at 90% 0%,rgba(177,226,216,.12),transparent 32%),#f3f6f5; }
+.restro-mobile-nav { border-top:1px solid #e3ebe9; background:rgba(255,255,255,.96); backdrop-filter:blur(16px); box-shadow:0 -8px 24px rgba(22,45,54,.06); }
+.restro-mobile-nav button { color:#8a9aa1; }
+.restro-mobile-nav button.selected { color:#087f72; }
+
+/* Harmonise existing screens with the new teal identity */
+.bg-orange-600 { background-color:#087f72 !important; }
+.hover\:bg-orange-700:hover { background-color:#066b61 !important; }
+.bg-orange-50 { background-color:#e8f6f3 !important; }
+.hover\:bg-orange-100:hover { background-color:#d9f0eb !important; }
+.text-orange-700, .text-orange-600 { color:#087f72 !important; }
+.border-orange-400, .border-orange-300 { border-color:#63bfb1 !important; }
+.hover\:border-orange-300:hover { border-color:#63bfb1 !important; }
+.ring-orange-100 { --tw-ring-color:#d5eee9 !important; }
+.focus\:border-orange-500:focus { border-color:#0b9a89 !important; }
+.focus\:ring-orange-100:focus { --tw-ring-color:#d5eee9 !important; }
+
+/* Shared surfaces, controls and headings */
+.rounded-2xl.border.border-stone-200\/80.bg-white { border-color:#e5ecea; box-shadow:0 4px 18px rgba(25,48,59,.035); }
+input:focus, select:focus, textarea:focus { outline-color:#0b9a89; }
+@media (max-width: 1023px) { .restro-content { padding-top:18px; } }
