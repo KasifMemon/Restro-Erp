@@ -57,3 +57,8 @@ Important limitations: this is a client-side local administration console, not a
 - Master Admin includes a per-customer subscription key generator. Select one restaurant account, choose a plan and expiry date, and generate a unique formatted key.
 - The generated key is assigned to that customer's licence field and stored in the local key register. Keys can be copied and marked revoked. A new active key for the same customer supersedes the previous active key in the local register.
 - Keys are generated with the browser cryptographic random number generator. However, local storage is not a secure licensing authority: key validation, expiry enforcement, anti-tamper protection, and customer/device activation require a server-side licensing API.
+
+
+## v3.5 — Secure Developer Portal
+
+The Business admin page is now protected by Supabase Auth and a server-side developer allow-list. Follow `SUPABASE-SETUP.md` and `.env.example` before using the portal. No service-role key belongs in the browser. Customer/subscription records remain local in this release; shared backend licensing is a separate next phase.
