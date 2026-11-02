@@ -6,7 +6,7 @@ import { fileToLogo, uid } from '../utils.js';
 import { receiptDoc, renderHTML, sampleOrder } from '../print.js';
 import PrinterTab from './PrinterTab.jsx';
 import BackupTab from './BackupTab.jsx';
-import AdminTab from './AdminTab.jsx';
+import DeveloperGate from '../DeveloperGate.jsx';
 
 const Toggle = ({ label, checked, onChange, hint }) => (
   <label className="flex cursor-pointer items-start gap-3 py-1.5 text-sm">
@@ -30,7 +30,7 @@ export default function SettingsPage() {
       {tab === 'printers' && <PrinterTab />}
       {tab === 'tables' && <TablesTab />}
       {tab === 'backup' && <BackupTab />}
-      {tab === 'admin' && <AdminTab />}
+      {tab === 'admin' && <DeveloperGate />}
     </>
   );
 }
