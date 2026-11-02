@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { MessageCircle, Printer, Search, Ban } from 'lucide-react';
 import { Badge, Btn, Card, Chip, Empty, Field, Modal, PageHeader, inputCls } from '../components.jsx';
 import { useStore } from '../store.jsx';
-import { DAY, calcTotals, dkey, fmtDT, inr, printHTML, receiptHTML, startOfDay } from '../utils.js';
+import { DAY, calcTotals, fmtDT, inr, startOfDay } from '../utils.js';
+import { printReceipt } from '../print.js';
 
 const tone = { paid: 'green', open: 'orange', cancelled: 'gray', void: 'red' };
 
@@ -94,7 +95,7 @@ function BillModal({ order: o0, canVoid, onClose, go }) {
           : <>
             {o.status === 'paid' && canVoid && <Btn variant="ghost" className="mr-auto text-red-600" onClick={() => setVoiding(true)}><Ban size={15} /> Void</Btn>}
             <Btn variant="ghost" onClick={wa}><MessageCircle size={15} /> WhatsApp</Btn>
-            <Btn onClick={() => printHTML(receiptHTML(o, data.settings, table?.name, t))}><Printer size={15} /> Reprint</Btn>
+            <Btn onClick={() => printReceipt(o, data.settings, table?.name, t)}><Printer size={15} /> Reprint</Btn>
           </>}
     >
       <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-stone-500">
@@ -112,6 +113,7 @@ function BillModal({ order: o0, canVoid, onClose, go }) {
       <div className="mt-3 space-y-1 rounded-2xl bg-stone-50 p-3 text-sm">
         <div className="flex justify-between"><span>Subtotal</span><span>{inr(t.sub)}</span></div>
         {t.disc > 0 && <div className="flex justify-between"><span>Discount</span><span>-{inr(t.disc)}</span></div>}
+        {t.redeem > 0 && <div className="flex justify-between"><span>Loyalty points</span><span>-{inr(t.redeem)}</span></div>}
         {t.sc > 0 && <div className="flex justify-between"><span>Service charge</span><span>{inr(t.sc)}</span></div>}
         <div className="flex justify-between"><span>CGST + SGST</span><span>{inr(t.tax)}</span></div>
         <div className="flex justify-between border-t border-stone-200 pt-1 text-lg font-bold"><span>Total</span><span>{inr(t.total)}</span></div>

@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Btn, Card, Empty, PageHeader, Stat, Badge } from '../components.jsx';
 import { useStore } from '../store.jsx';
 import { DAY, dkey, inr, startOfDay, calcTotals } from '../utils.js';
+import { downloadBackup, getMeta, shareBackup } from '../backup.js';
 
 export default function Dashboard({ go }) {
   const { data } = useStore();
@@ -35,6 +36,8 @@ export default function Dashboard({ go }) {
   todays.forEach((o) => o.payments.forEach((p) => { modes[p.mode] = (modes[p.mode] || 0) + p.amount; }));
   const low = data.ingredients.filter((i) => i.stock <= i.min);
   const kotPending = data.kots.filter((k) => k.status !== 'served').length;
+  const [snooze, setSnooze] = useState(false);
+  const stale = !snooze && paid.length > 0 && Date.now() - (getMeta().lastExportAt || 0) > 7 * DAY;
 
   return (
     <>
@@ -43,6 +46,13 @@ export default function Dashboard({ go }) {
         <Btn variant="dark" onClick={() => go('kitchen')}>Kitchen ({kotPending})</Btn>
       </PageHeader>
 
+      {stale && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <span className="min-w-0 flex-1">💾 <b>Keep a copy safe.</b> Your data lives on this device — save a backup to WhatsApp / Drive / your computer (last saved {getMeta().lastExportAt ? Math.round((Date.now() - getMeta().lastExportAt) / DAY) + ' days ago' : 'never'}).</span>
+          <Btn size="sm" onClick={async () => { try { if (!(await shareBackup(data))) downloadBackup(data); } catch { /* cancelled */ } setSnooze(true); }}>Back up now</Btn>
+          <button className="text-xs text-amber-700 underline" onClick={() => setSnooze(true)}>Later</button>
+        </div>
+      )}
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat label="Today's Sales" value={inr(sales)} sub={`${todays.length} bills${delta != null ? ` · ${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% vs yesterday` : ''}`} tone="text-orange-600" />
         <Stat label="Avg. Bill" value={inr(avg)} />

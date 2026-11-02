@@ -3,10 +3,8 @@ import QRCode from 'qrcode';
 import { ArrowLeft, ArrowLeftRight, ChefHat, Minus, Plus, Printer, Search, ShoppingBag, StickyNote, Trash2 } from 'lucide-react';
 import { Badge, Btn, Card, Chip, Empty, Field, Modal, VegDot, inputCls } from '../components.jsx';
 import { useStore } from '../store.jsx';
-import { calcTotals, inr, kotHTML, printHTML, receiptHTML } from '../utils.js';
-
-const upiLink = (s, amt, note) =>
-  `upi://pay?pa=${encodeURIComponent(s.upiId)}&pn=${encodeURIComponent(s.name)}&am=${Number(amt).toFixed(2)}&cu=INR&tn=${encodeURIComponent(note)}`;
+import { calcTotals, inr, upiLink } from '../utils.js';
+import { printKOT, printReceipt } from '../print.js';
 
 export default function POS({ orderId, go }) {
   const s = useStore();
@@ -48,13 +46,11 @@ export default function POS({ orderId, go }) {
 
   const sendKOT = () => {
     const kot = s.sendKOT(order.id);
-    if (kot) printHTML(kotHTML(kot, data.settings));
+    if (kot && data.settings.autoPrintKot) printKOT(kot, data.settings);
   };
-  const printBill = async () => {
+  const printBill = () => {
     s.patchOrder(order.id, { billed: true });
-    let qr = '';
-    if (data.settings.upiId) { try { qr = await QRCode.toDataURL(upiLink(data.settings, totals.total, 'Bill ' + order.no), { margin: 1, width: 220 }); } catch { /* ignore */ } }
-    printHTML(receiptHTML({ ...order, paidAt: Date.now() }, data.settings, table?.name, totals, qr));
+    printReceipt({ ...order, paidAt: Date.now() }, data.settings, table?.name, totals);
   };
   const cancel = () => {
     if (!window.confirm('Cancel this whole order?')) return;
@@ -225,11 +221,17 @@ function SettleModal({ order, table, onClose, onDone }) {
   const [guest, setGuest] = useState(order.guest || {});
   const [split, setSplit] = useState(1);
   const [qr, setQr] = useState('');
+  const [redeemPts, setRedeemPts] = useState('');
 
-  const t = calcTotals({ ...order, discount: disc, scOff }, st);
+  const cust = data.customers.find((c) => c.id === customerId);
+  const base0 = calcTotals({ ...order, discount: disc, scOff }, st);
+  const rv = st.redeemValue || 1;
+  const maxPts = st.loyaltyOn && cust ? Math.max(0, Math.min(cust.points, Math.floor((base0.sub - base0.disc) / rv))) : 0;
+  const pts = Math.min(Math.max(+redeemPts || 0, 0), maxPts);
+  const redeem = pts * rv;
+  const t = calcTotals({ ...order, discount: disc, scOff, redeem }, st);
   const paid = ['cash', 'upi', 'card'].reduce((a, k) => a + (Number(pay[k]) || 0), 0);
   const remaining = Math.round((t.total - paid) * 100) / 100;
-  const cust = data.customers.find((c) => c.id === customerId);
   const canCredit = !!(customerId || guest.phone);
   const change = remaining < 0 ? -remaining : 0;
   const upiDue = Math.max(0, t.total - (Number(pay.cash) || 0) - (Number(pay.card) || 0));
@@ -248,9 +250,12 @@ function SettleModal({ order, table, onClose, onDone }) {
       return { mode: k, amount: amt };
     });
     const due = remaining > 0.5 ? remaining : 0;
-    const final = { payments, discount: disc, due, customerId: customerId || null, scOff, guest };
+    const final = { payments, discount: disc, due, customerId: customerId || null, scOff, guest, redeem };
     s.settle(order.id, final);
-    printHTML(receiptHTML({ ...order, ...final, billNo: s.get().counters.bill - 1, paidAt: Date.now() }, st, table?.name, t));
+    if (st.autoPrintBill) {
+      const hasCash = payments.some((p) => p.mode === 'cash');
+      printReceipt({ ...order, ...final, billNo: s.get().counters.bill - 1, paidAt: Date.now() }, st, table?.name, t, { kick: hasCash });
+    }
     onDone();
   };
 
@@ -273,7 +278,7 @@ function SettleModal({ order, table, onClose, onDone }) {
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={scOff} onChange={(e) => setScOff(e.target.checked)} /> Waive service charge</label>
           )}
           <Field label="Customer (loyalty / credit)">
-            <select className={inputCls} value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
+            <select className={inputCls} value={customerId} onChange={(e) => { setCustomerId(e.target.value); setRedeemPts(''); }}>
               <option value="">— Walk-in —</option>
               {data.customers.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.phone}</option>)}
             </select>
@@ -285,6 +290,13 @@ function SettleModal({ order, table, onClose, onDone }) {
             </div>
           )}
           {cust?.due > 0 && <div className="rounded-xl bg-amber-50 p-2.5 text-xs text-amber-700">{cust.name} has an old due of {inr(cust.due)}</div>}
+          {maxPts > 0 && (
+            <div className="flex items-center gap-3 rounded-xl bg-orange-50 p-2.5 text-sm">
+              <span className="flex-1 text-orange-800">⭐ {cust.points} points (₹{cust.points * rv}) — redeem</span>
+              <input type="number" min="0" max={maxPts} className={inputCls + ' !w-20 !py-1.5 text-center'} value={redeemPts} onChange={(e) => setRedeemPts(e.target.value)} placeholder="0" />
+              <button className="text-xs font-semibold text-orange-700" onClick={() => setRedeemPts(String(maxPts))}>Max</button>
+            </div>
+          )}
           <div className="flex items-center gap-3 rounded-xl bg-stone-50 p-2.5 text-sm">
             <span className="text-stone-500">Split equally between</span>
             <input type="number" min="1" className={inputCls + ' !w-16 !py-1.5 text-center'} value={split} onChange={(e) => setSplit(Math.max(1, +e.target.value || 1))} />
@@ -296,6 +308,7 @@ function SettleModal({ order, table, onClose, onDone }) {
           <div className="mb-3 rounded-2xl bg-stone-50 p-3.5 text-sm">
             <Row k="Subtotal" v={inr(t.sub)} />
             {t.disc > 0 && <Row k="Discount" v={'-' + inr(t.disc)} />}
+            {t.redeem > 0 && <Row k="Loyalty points" v={'-' + inr(t.redeem)} />}
             {t.sc > 0 && <Row k="Service charge" v={inr(t.sc)} />}
             <Row k="GST (CGST+SGST)" v={inr(t.tax)} />
             {Math.abs(t.round) > 0.004 && <Row k="Round off" v={t.round.toFixed(2)} />}

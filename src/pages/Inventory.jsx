@@ -3,6 +3,8 @@ import { Pencil, Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { Badge, Btn, Card, Field, Modal, PageHeader, Stat, Table, inputCls } from '../components.jsx';
 import { useStore } from '../store.jsx';
 import { fmtDT, inr, uid } from '../utils.js';
+import CsvImport from '../CsvImport.jsx';
+import { toast } from '../toast.js';
 
 export default function Inventory() {
   const s = useStore();
@@ -10,6 +12,7 @@ export default function Inventory() {
   const [edit, setEdit] = useState(null);
   const [adj, setAdj] = useState(null);
   const [q, setQ] = useState('');
+  const [imp, setImp] = useState(false);
 
   const list = data.ingredients.filter((i) => i.name.toLowerCase().includes(q.toLowerCase()));
   const low = data.ingredients.filter((i) => i.stock <= i.min).length;
@@ -19,6 +22,7 @@ export default function Inventory() {
     <>
       <PageHeader title="Inventory" sub="Raw materials — auto-deducted using recipes when KOT is sent; auto-added on purchases">
         <input className={inputCls + ' !w-48'} placeholder="Search…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <Btn variant="ghost" onClick={() => setImp(true)}>Import CSV</Btn>
         <Btn onClick={() => setEdit({ id: uid('i'), name: '', unit: 'kg', stock: 0, min: 0, cost: 0 })}><Plus size={16} /> Add Item</Btn>
       </PageHeader>
 
@@ -59,6 +63,19 @@ export default function Inventory() {
         ))}
       </Card>
 
+      {imp && (
+        <CsvImport
+          title="Import stock items"
+          columns={[{ key: 'name' }, { key: 'unit' }, { key: 'stock', aliases: ['qty', 'quantity'] }, { key: 'min', aliases: ['minimum', 'reorder'] }, { key: 'cost', aliases: ['rate', 'price'] }]}
+          sample={[['Basmati Rice', 'kg', '40', '10', '110'], ['Cooking Oil', 'l', '25', '6', '140']]}
+          validate={(r) => (!r.name ? 'name missing' : r.stock !== '' && isNaN(+r.stock) ? 'stock invalid' : r.cost !== '' && isNaN(+r.cost) ? 'cost invalid' : '')}
+          onClose={() => setImp(false)}
+          onImport={(rows) => {
+            s.update((d) => rows.forEach((r) => d.ingredients.push({ id: uid('i'), name: r.name, unit: r.unit || 'kg', stock: +r.stock || 0, min: +r.min || 0, cost: +r.cost || 0 })));
+            toast(`${rows.length} items imported`, 'ok');
+          }}
+        />
+      )}
       {edit && (
         <Modal
           title={data.ingredients.some((x) => x.id === edit.id) ? 'Edit Item' : 'Add Item'}

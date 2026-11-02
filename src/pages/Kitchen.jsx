@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
 import { Btn, Card, Empty, PageHeader } from '../components.jsx';
 import { useStore } from '../store.jsx';
-import { fmtTime, kotHTML, printHTML } from '../utils.js';
+import { fmtTime } from '../utils.js';
+import { printKOT } from '../print.js';
 
 const COLS = [
   ['new', 'New', 'border-red-200 bg-red-50', 'Start cooking', 'preparing'],
@@ -65,7 +66,7 @@ export default function Kitchen() {
                       </ul>
                       <div className="flex gap-2">
                         <Btn className="flex-1" variant={st === 'ready' ? 'green' : 'dark'} onClick={() => s.kotStatus(k.id, next)}>{btn}</Btn>
-                        <Btn variant="ghost" onClick={() => printHTML(kotHTML(k, data.settings))}>Print</Btn>
+                        <Btn variant="ghost" onClick={() => printKOT(k, data.settings)}>Print</Btn>
                       </div>
                     </Card>
                   );

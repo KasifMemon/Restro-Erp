@@ -49,7 +49,7 @@ export default function Reports() {
     for (let t = new Date(from + 'T00:00:00').getTime(); dkey(t) <= to && days.length < 120; t += DAY) days.push({ day: dkey(t).slice(5), sales: Math.round(byDay[dkey(t)] || 0) });
     return {
       orders, total: sum((o) => o.totals.total), taxable: sum((o) => o.totals.taxable), tax: sum((o) => o.totals.tax),
-      disc: sum((o) => o.totals.disc), sc: sum((o) => o.totals.sc), byItem, byCat, byPay, byType, gst, foodCost,
+      disc: sum((o) => o.totals.disc + (o.totals.redeem || 0)), sc: sum((o) => o.totals.sc), byItem, byCat, byPay, byType, gst, foodCost,
       expenses: exp.reduce((a, e) => a + e.amount, 0), expList: exp, days,
     };
   }, [data, from, to]);

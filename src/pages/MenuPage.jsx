@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { Badge, Btn, Card, Field, Modal, PageHeader, Table, VegDot, inputCls } from '../components.jsx';
 import { useStore } from '../store.jsx';
-import { inr, uid } from '../utils.js';
+import { inr, printHTML, uid } from '../utils.js';
+import CsvImport from '../CsvImport.jsx';
+import { saveSnap } from '../backup.js';
+import { toast } from '../toast.js';
 
 export default function MenuPage() {
   const s = useStore();
@@ -10,6 +13,7 @@ export default function MenuPage() {
   const [edit, setEdit] = useState(null);
   const [catEdit, setCatEdit] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [imp, setImp] = useState(false);
 
   const costOf = (m) => (m.recipe || []).reduce((a, r) => a + r.qty * (data.ingredients.find((i) => i.id === r.ingId)?.cost || 0), 0);
   const list = data.menu.filter((m) => filter === 'all' || m.catId === filter);
@@ -17,6 +21,8 @@ export default function MenuPage() {
   return (
     <>
       <PageHeader title="Menu" sub={`${data.menu.length} dishes · set price, GST and recipe for auto stock deduction`}>
+        <Btn variant="ghost" onClick={() => setImp(true)}>Import CSV</Btn>
+        <Btn variant="ghost" onClick={() => printMenuCard(data)}>Print menu card</Btn>
         <Btn variant="ghost" onClick={() => setCatEdit(true)}>Categories</Btn>
         <Btn onClick={() => setEdit({ id: uid('m'), name: '', catId: data.categories[0]?.id || '', price: 0, veg: true, gst: 5, available: true, recipe: [] })}><Plus size={16} /> Add Dish</Btn>
       </PageHeader>
@@ -53,6 +59,30 @@ export default function MenuPage() {
         </Table>
       </Card>
 
+      {imp && (
+        <CsvImport
+          title="Import menu"
+          columns={[{ key: 'name' }, { key: 'category' }, { key: 'price' }, { key: 'veg', aliases: ['type'] }, { key: 'gst', aliases: ['tax'] }]}
+          sample={[['Paneer Tikka', 'Starters', '260', 'veg', '5'], ['Chicken Biryani', 'Rice & Biryani', '300', 'nonveg', '5']]}
+          validate={(r) => (!r.name ? 'name missing' : !(+r.price > 0) ? 'price invalid' : r.gst !== '' && ![0, 5, 12, 18, 28].includes(+r.gst) ? 'gst must be 0/5/12/18/28' : '')}
+          replaceLabel="Replace my whole current menu (a safety backup is taken first)"
+          onClose={() => setImp(false)}
+          onImport={async (rows, replace) => {
+            if (replace) await saveSnap(s.get(), 'pre-reset');
+            s.update((d) => {
+              if (replace) { d.menu = []; d.categories = []; }
+              rows.forEach((r) => {
+                const cn = r.category || 'General';
+                let c = d.categories.find((x) => x.name.toLowerCase() === cn.toLowerCase());
+                if (!c) { c = { id: uid('c'), name: cn }; d.categories.push(c); }
+                const veg = !['n', 'no', 'nonveg', 'non-veg', 'non veg', 'false', '0', 'nv'].includes(r.veg.toLowerCase());
+                d.menu.push({ id: uid('m'), name: r.name, catId: c.id, price: +r.price, veg, gst: r.gst === '' ? 5 : +r.gst, available: true, recipe: [] });
+              });
+            });
+            toast(`${rows.length} dishes imported`, 'ok');
+          }}
+        />
+      )}
       {edit && <DishModal dish={edit} onClose={() => setEdit(null)} />}
       {catEdit && <CategoryModal onClose={() => setCatEdit(false)} />}
     </>
@@ -146,4 +176,25 @@ function CategoryModal({ onClose }) {
       })}
     </Modal>
   );
+}
+
+function printMenuCard(data) {
+  const st = data.settings;
+  const esc = (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const sections = data.categories.map((c) => {
+    const items = data.menu.filter((m) => m.catId === c.id && m.available);
+    if (!items.length) return '';
+    return `<div class="cat"><h2>${esc(c.name)}</h2>${items.map((m) => `<div class="it"><span class="dot ${m.veg ? 'v' : 'n'}"></span><span class="nm">${esc(m.name)}</span><span class="dots"></span><b>₹${m.price}</b></div>`).join('')}</div>`;
+  }).join('');
+  printHTML(`<!doctype html><html><head><meta charset="utf-8"><style>
+@page{size:A4;margin:14mm}body{font-family:Georgia,'Times New Roman',serif;color:#222}
+header{text-align:center;margin-bottom:10mm;border-bottom:2px solid #ea580c;padding-bottom:6mm}
+header img{max-height:22mm;margin-bottom:3mm}header h1{margin:0;font-size:28px;letter-spacing:1px}header p{margin:2px 0;font-size:12px;color:#555}
+.cols{column-count:2;column-gap:14mm}.cat{break-inside:avoid;margin-bottom:7mm}
+h2{font-size:16px;text-transform:uppercase;letter-spacing:2px;color:#ea580c;border-bottom:1px solid #ddd;margin:0 0 3mm;padding-bottom:1mm}
+.it{display:flex;align-items:baseline;gap:6px;margin:1.6mm 0;font-size:13px}.nm{flex:none}.dots{flex:1;border-bottom:1px dotted #aaa;transform:translateY(-3px)}
+.dot{width:9px;height:9px;border:1.5px solid;display:inline-block;border-radius:2px;position:relative;top:1px}.dot.v{border-color:#16a34a}.dot.n{border-color:#dc2626}
+footer{text-align:center;font-size:11px;color:#777;margin-top:6mm}
+</style></head><body><header>${st.logo ? `<img src="${st.logo}">` : ''}<h1>${esc(st.name)}</h1><p>${esc(st.address || '')}</p><p>${esc(st.phone || '')}</p></header>
+<div class="cols">${sections}</div><footer>${st.fssai ? 'FSSAI ' + esc(st.fssai) + ' · ' : ''}Prices in ₹ ${st.taxInclusive ? 'inclusive' : 'exclusive'} of GST</footer></body></html>`);
 }
