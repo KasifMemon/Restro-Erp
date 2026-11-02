@@ -15,7 +15,8 @@ export function normalize(o) {
     receipt: { ...b.settings.receipt, ...(os.receipt || {}) },
     printers: { bill: { ...b.settings.printers.bill, ...(os.printers?.bill || {}) }, kitchen: { ...b.settings.printers.kitchen, ...(os.printers?.kitchen || {}) } },
   };
-  return { ...b, ...o, settings, counters: { ...b.counters, ...(o.counters || {}) } };
+  const outlets = Array.isArray(o.outlets) && o.outlets.length ? o.outlets : [{ id: 'out-main', name: settings.name, code: 'MAIN', phone: settings.phone, address: settings.address, active: true, createdAt: Date.now() }];
+  return { ...b, ...o, outlets, settings, counters: { ...b.counters, ...(o.counters || {}) } };
 }
 
 function load() {

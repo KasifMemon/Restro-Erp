@@ -35,6 +35,11 @@ const GROUPS = [
   ['Back office', ['menu', 'inventory', 'purchases', 'customers', 'staff', 'expenses', 'dayclose', 'reports', 'settings']],
 ];
 const BOTTOM = ['tables', 'pos', 'kitchen', 'orders', 'dashboard'];
+const NAV_TEXT = {
+  en: {Dashboard:'Dashboard',Tables:'Tables',Billing:'Billing',Kitchen:'Kitchen',Bills:'Bills',Reservations:'Reservations',Menu:'Menu',Inventory:'Inventory',Purchases:'Purchases',Customers:'Customers',Staff:'Staff',Expenses:'Expenses','Cash Register':'Cash Register',Reports:'Reports',Settings:'Settings',Operations:'Operations','Back office':'Back office',More:'More','All modules':'All modules'},
+  gu: {Dashboard:'ડેશબોર્ડ',Tables:'ટેબલ',Billing:'બિલિંગ',Kitchen:'રસોડું',Bills:'બિલ',Reservations:'બુકિંગ',Menu:'મેનુ',Inventory:'સ્ટોક',Purchases:'ખરીદી',Customers:'ગ્રાહકો',Staff:'સ્ટાફ',Expenses:'ખર્ચ','Cash Register':'રોકડ રજીસ્ટર',Reports:'રિપોર્ટ',Settings:'સેટિંગ્સ',Operations:'કામકાજ','Back office':'ઓફિસ',More:'વધુ','All modules':'બધા મોડ્યુલ'},
+  hi: {Dashboard:'डैशबोर्ड',Tables:'टेबल',Billing:'बिलिंग',Kitchen:'रसोई',Bills:'बिल',Reservations:'बुकिंग',Menu:'मेन्यू',Inventory:'स्टॉक',Purchases:'खरीद',Customers:'ग्राहक',Staff:'स्टाफ',Expenses:'खर्च', 'Cash Register':'कैश रजिस्टर',Reports:'रिपोर्ट',Settings:'सेटिंग्स',Operations:'कामकाज','Back office':'बैक ऑफिस',More:'और','All modules':'सभी मॉड्यूल'}
+};
 
 function Toasts() {
   const [list, setList] = useState([]);
@@ -58,6 +63,7 @@ function Toasts() {
 
 export default function App() {
   const { data, get } = useStore();
+  const tr = (label) => NAV_TEXT[data.settings.language || 'en']?.[label] || label;
 
   // automatic backups: on start, then every 10 min (only saves when something changed)
   useEffect(() => {
@@ -133,13 +139,13 @@ export default function App() {
             if (!ks.length) return null;
             return (
               <div key={g}>
-                <div className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-stone-400">{g}</div>
+                <div className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-stone-400">{tr(g)}</div>
                 {ks.map((k) => {
                   const [n, Icon] = PAGES[k];
                   return (
                     <button key={k} onClick={() => go(k)} className={`mb-0.5 flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${cur === k ? 'bg-orange-50 font-semibold text-orange-700' : 'text-stone-600 hover:bg-stone-50'}`}>
                       <Icon size={18} className={cur === k ? 'text-orange-600' : 'text-stone-400'} />
-                      <span className="flex-1 text-left">{n}</span>
+                      <span className="flex-1 text-left">{tr(n)}</span>
                       {badge(k) > 0 && <span className={`rounded-full px-1.5 text-xs font-bold ${k === 'kitchen' ? 'bg-orange-600 text-white' : 'bg-stone-200 text-stone-700'}`}>{badge(k)}</span>}
                     </button>
                   );
@@ -164,7 +170,7 @@ export default function App() {
         <header className="flex items-center gap-3 border-b border-stone-200 bg-white px-4 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] lg:hidden">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-600 text-white"><UtensilsCrossed size={16} /></div>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-bold leading-tight">{PAGES[cur][0]}</div>
+            <div className="truncate text-sm font-bold leading-tight">{tr(PAGES[cur][0])}</div>
             <div className="truncate text-[11px] text-stone-400">{data.settings.name}</div>
           </div>
           {lockOn && <button onClick={lock} className="rounded-lg p-2 text-stone-500 hover:bg-stone-100" aria-label="Lock"><LockIcon size={18} /></button>}
@@ -178,7 +184,7 @@ export default function App() {
           const [n, Icon] = PAGES[k];
           return (
             <button key={k} onClick={() => go(k)} className={`relative flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${cur === k ? 'text-orange-600' : 'text-stone-400'}`}>
-              <Icon size={22} />{n}
+              <Icon size={22} />{tr(n)}
               {badge(k) > 0 && <span className="absolute right-1/4 top-1 rounded-full bg-orange-600 px-1.5 text-[10px] font-bold text-white">{badge(k)}</span>}
             </button>
           );
@@ -194,7 +200,7 @@ export default function App() {
         <div className="fixed inset-0 z-[55] flex items-end bg-stone-900/40 lg:hidden" onClick={() => setMore(false)}>
           <div className="sheet-in w-full rounded-t-3xl bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-lg font-semibold">All modules</h3>
+              <h3 className="text-lg font-semibold">{tr('All modules')}</h3>
               <button onClick={() => setMore(false)} className="rounded-xl p-1.5 text-stone-500 hover:bg-stone-100"><X size={20} /></button>
             </div>
             <div className="grid grid-cols-3 gap-2.5">
@@ -202,7 +208,7 @@ export default function App() {
                 const [n, Icon] = PAGES[k];
                 return (
                   <button key={k} onClick={() => go(k)} className={`flex flex-col items-center gap-1.5 rounded-2xl border p-3 text-xs font-medium ${cur === k ? 'border-orange-300 bg-orange-50 text-orange-700' : 'border-stone-200 text-stone-600'}`}>
-                    <Icon size={22} />{n}
+                    <Icon size={22} />{tr(n)}
                   </button>
                 );
               })}

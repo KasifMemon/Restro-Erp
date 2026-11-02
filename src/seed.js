@@ -3,6 +3,10 @@ import { calcTotals, DAY, startOfDay } from './utils';
 const printerDefaults = { mode: 'browser', kind: 'usb', paper: 80, graphic: false, baud: 9600, deviceId: '' };
 export const defaultSettings = {
   name: 'Spice Garden Restaurant',
+  language: 'en',
+  licenseKey: '',
+  licenseStatus: 'unlicensed',
+  integrationBaseUrl: '',
   address: '12, Main Road, Your City - 380001',
   phone: '+91 98765 43210',
   gstin: '',
@@ -85,6 +89,7 @@ function rng(seed) {
 export function emptyData() {
   return {
     settings: structuredClone(defaultSettings),
+    outlets: [],
     categories: [], menu: [], tables: [], orders: [], kots: [], ingredients: [], stockLog: [],
     suppliers: [], purchases: [], customers: [], staff: [], expenses: [], reservations: [], dayCloses: [], counters: { order: 1, kot: 1, bill: 1 },
   };
@@ -163,7 +168,7 @@ export function seed({ history = true } = {}) {
   }
 
   return {
-    settings, categories, menu, tables, orders, kots: [], ingredients, stockLog: [],
+    settings, outlets: [{ id: 'out-main', name: settings.name, code: 'MAIN', phone: settings.phone, address: settings.address, active: true, createdAt: Date.now() }], categories, menu, tables, orders, kots: [], ingredients, stockLog: [],
     suppliers, purchases: [], customers, staff, expenses, dayCloses: [],
     reservations: [
       { id: 'rv1', name: 'Rahul Mehta', phone: '9811111111', pax: 4, at: Date.now() + 2 * 3600000, tableId: 't2', note: 'Birthday – needs cake table', status: 'booked' },
