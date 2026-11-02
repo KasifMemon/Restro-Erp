@@ -10,6 +10,10 @@ export default function Dashboard({ go }) {
   const today = dkey(Date.now());
   const todays = paid.filter((o) => dkey(o.paidAt) === today);
   const sales = todays.reduce((a, o) => a + o.totals.total, 0);
+  const yk = dkey(Date.now() - DAY);
+  const ySales = paid.filter((o) => dkey(o.paidAt) === yk).reduce((a, o) => a + o.totals.total, 0);
+  const delta = ySales ? Math.round(((sales - ySales) / ySales) * 100) : null;
+  const upcoming = data.reservations.filter((r) => r.status === 'booked' && r.at > Date.now() && dkey(r.at) === today).length;
   const avg = todays.length ? sales / todays.length : 0;
   const open = data.orders.filter((o) => o.status === 'open');
   const openValue = open.reduce((a, o) => a + calcTotals(o, data.settings).total, 0);
@@ -40,14 +44,14 @@ export default function Dashboard({ go }) {
       </PageHeader>
 
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <Stat label="Today's Sales" value={inr(sales)} sub={`${todays.length} bills`} tone="text-orange-600" />
+        <Stat label="Today's Sales" value={inr(sales)} sub={`${todays.length} bills${delta != null ? ` · ${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% vs yesterday` : ''}`} tone="text-orange-600" />
         <Stat label="Avg. Bill" value={inr(avg)} />
         <Stat label="Running Orders" value={open.length} sub={inr(openValue) + ' pending'} />
         <Stat label="Today's Expenses" value={inr(expToday)} />
-        <Stat label="Low Stock Items" value={low.length} tone={low.length ? 'text-red-600' : 'text-emerald-600'} />
+        <Stat label="Low Stock Items" value={low.length} sub={`${upcoming} reservation${upcoming === 1 ? '' : 's'} later today`} tone={low.length ? 'text-red-600' : 'text-emerald-600'} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="p-4 lg:col-span-2">
           <h3 className="mb-3 font-semibold">Last 7 days sales</h3>
           <div className="h-64">

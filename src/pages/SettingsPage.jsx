@@ -37,7 +37,7 @@ export default function SettingsPage() {
   return (
     <>
       <PageHeader title="Settings" sub="Restaurant profile, tax, tables and data" />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card className="space-y-3 p-4">
           <h3 className="font-semibold">Restaurant & bill</h3>
           <Field label="Restaurant name"><input className={inputCls} value={st.name} onChange={(e) => set({ name: e.target.value })} /></Field>
@@ -45,7 +45,7 @@ export default function SettingsPage() {
           <div className="grid grid-cols-2 gap-3">
             <Field label="Phone"><input className={inputCls} value={st.phone} onChange={(e) => set({ phone: e.target.value })} /></Field>
             <Field label="GSTIN"><input className={inputCls} value={st.gstin} onChange={(e) => set({ gstin: e.target.value.toUpperCase() })} /></Field>
-            <Field label="UPI ID (shown on provisional bill)"><input className={inputCls} value={st.upiId} onChange={(e) => set({ upiId: e.target.value })} /></Field>
+            <Field label="UPI ID (shows payment QR)"><input className={inputCls} value={st.upiId} onChange={(e) => set({ upiId: e.target.value })} /></Field>
             <Field label="Service charge % (dine-in)"><input type="number" min="0" className={inputCls} value={st.serviceCharge} onChange={(e) => set({ serviceCharge: +e.target.value })} /></Field>
           </div>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={st.taxInclusive} onChange={(e) => set({ taxInclusive: e.target.checked })} /> Menu prices already include GST</label>

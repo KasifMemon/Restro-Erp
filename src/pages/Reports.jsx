@@ -104,7 +104,7 @@ export default function Reports() {
         <Mini title="By category (ex-GST)" obj={r.byCat} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <div className="flex items-center justify-between p-4 pb-0"><h3 className="font-semibold">Item-wise sales</h3><Btn size="sm" variant="ghost" onClick={exportItems}>CSV</Btn></div>
           <Table head={['Item', { t: 'Qty', cls: 'text-right' }, { t: 'Amount', cls: 'text-right' }]}>

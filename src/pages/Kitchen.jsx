@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Volume2, VolumeX } from 'lucide-react';
 import { Btn, Card, Empty, PageHeader } from '../components.jsx';
 import { useStore } from '../store.jsx';
 import { fmtTime, kotHTML, printHTML } from '../utils.js';
 
 const COLS = [
-  ['new', 'New', 'border-red-300 bg-red-50', 'Start cooking', 'preparing'],
-  ['preparing', 'Preparing', 'border-amber-300 bg-amber-50', 'Mark ready', 'ready'],
-  ['ready', 'Ready to serve', 'border-emerald-300 bg-emerald-50', 'Served', 'served'],
+  ['new', 'New', 'border-red-200 bg-red-50', 'Start cooking', 'preparing'],
+  ['preparing', 'Preparing', 'border-amber-200 bg-amber-50', 'Mark ready', 'ready'],
+  ['ready', 'Ready to serve', 'border-emerald-200 bg-emerald-50', 'Served', 'served'],
 ];
 
 export default function Kitchen() {
@@ -16,11 +17,30 @@ export default function Kitchen() {
   useEffect(() => { const i = setInterval(() => tick((x) => x + 1), 20000); return () => clearInterval(i); }, []);
   const mins = (ts) => Math.max(0, Math.round((Date.now() - ts) / 60000));
   const active = data.kots.filter((k) => k.status !== 'served');
+  const [sound, setSound] = useState(true);
+  const prevNew = useRef(active.filter((k) => k.status === 'new').length);
+  const newCount = active.filter((k) => k.status === 'new').length;
+  useEffect(() => {
+    if (sound && newCount > prevNew.current) {
+      try {
+        const ac = new (window.AudioContext || window.webkitAudioContext)();
+        [880, 1175].forEach((f, i) => {
+          const o = ac.createOscillator(), g = ac.createGain();
+          o.frequency.value = f; o.connect(g); g.connect(ac.destination);
+          g.gain.setValueAtTime(0.2, ac.currentTime + i * 0.18); g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + i * 0.18 + 0.16);
+          o.start(ac.currentTime + i * 0.18); o.stop(ac.currentTime + i * 0.18 + 0.17);
+        });
+      } catch (e) { /* ignore */ }
+    }
+    prevNew.current = newCount;
+  }, [newCount, sound]);
 
   return (
     <>
-      <PageHeader title="Kitchen Display" sub={`${active.length} active tickets · auto-refreshing`} />
-      <div className="grid gap-4 lg:grid-cols-3">
+      <PageHeader title="Kitchen Display" sub={`${active.length} active tickets`}>
+        <Btn variant="ghost" size="sm" onClick={() => setSound(!sound)}>{sound ? <Volume2 size={15} /> : <VolumeX size={15} />} {sound ? 'Sound on' : 'Muted'}</Btn>
+      </PageHeader>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {COLS.map(([st, title, cls, btn, next]) => {
           const list = active.filter((k) => k.status === st);
           return (

@@ -1,66 +1,63 @@
 import { useState } from 'react';
-import { Bike, ShoppingBag } from 'lucide-react';
+import { Bike, CalendarClock, ShoppingBag } from 'lucide-react';
 import { Btn, Card, Field, Modal, PageHeader, inputCls } from '../components.jsx';
 import { useStore } from '../store.jsx';
-import { calcTotals, inr } from '../utils.js';
+import { calcTotals, fmtTime, inr } from '../utils.js';
 
 export default function Tables({ go }) {
   const s = useStore();
   const { data } = s;
-  const [guestModal, setGuestModal] = useState(null); // 'take' | 'delivery'
+  const [guestModal, setGuestModal] = useState(null);
   const [g, setG] = useState({ name: '', phone: '', address: '' });
 
   const openByTable = {};
   data.orders.filter((o) => o.status === 'open' && o.tableId).forEach((o) => { openByTable[o.tableId] = o; });
+  const soon = {};
+  data.reservations.filter((r) => r.status === 'booked' && r.tableId && r.at > Date.now() - 30 * 60000 && r.at < Date.now() + 3 * 3600000).forEach((r) => { soon[r.tableId] = r; });
   const sections = [...new Set(data.tables.map((t) => t.section || 'Main'))];
   const nonDine = data.orders.filter((o) => o.status === 'open' && o.type !== 'dine');
+  const counts = { free: data.tables.filter((t) => !openByTable[t.id]).length, busy: Object.keys(openByTable).length };
 
-  const openTable = (t) => {
-    const id = s.openOrder({ type: 'dine', tableId: t.id });
-    go('pos', id);
-  };
+  const openTable = (t) => go('pos', s.openOrder({ type: 'dine', tableId: t.id }));
   const startGuest = () => {
     const id = s.openOrder({ type: guestModal, guest: g });
     setGuestModal(null); setG({ name: '', phone: '', address: '' });
     go('pos', id);
   };
-
   const mins = (ts) => Math.max(0, Math.round((Date.now() - ts) / 60000));
 
   return (
     <>
-      <PageHeader title="Tables & Orders" sub="Tap a table to start or continue its order">
-        <Btn variant="dark" onClick={() => setGuestModal('take')}><ShoppingBag size={16} /> New Takeaway</Btn>
-        <Btn onClick={() => setGuestModal('delivery')}><Bike size={16} /> New Delivery</Btn>
+      <PageHeader title="Tables" sub={`${counts.free} free · ${counts.busy} occupied`}>
+        <Btn variant="dark" onClick={() => setGuestModal('take')}><ShoppingBag size={16} /> Takeaway</Btn>
+        <Btn onClick={() => setGuestModal('delivery')}><Bike size={16} /> Delivery</Btn>
       </PageHeader>
-
-      <div className="mb-4 flex flex-wrap gap-4 text-xs text-stone-600">
-        <span className="flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-emerald-200" /> Free</span>
-        <span className="flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-orange-300" /> Occupied</span>
-        <span className="flex items-center gap-1.5"><i className="h-3 w-3 rounded bg-sky-300" /> Bill printed</span>
-      </div>
 
       {sections.map((sec) => (
         <div key={sec} className="mb-6">
-          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-stone-500">{sec}</h3>
+          <h3 className="mb-2.5 text-[11px] font-semibold uppercase tracking-widest text-stone-400">{sec}</h3>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
             {data.tables.filter((t) => (t.section || 'Main') === sec).map((t) => {
               const o = openByTable[t.id];
+              const rv = soon[t.id];
               const tot = o ? calcTotals(o, data.settings).total : 0;
-              const cls = !o ? 'border-emerald-300 bg-emerald-50 hover:bg-emerald-100' : o.billed ? 'border-sky-300 bg-sky-100 hover:bg-sky-200' : 'border-orange-300 bg-orange-100 hover:bg-orange-200';
+              const bar = !o ? (rv ? 'bg-violet-400' : 'bg-emerald-400') : o.billed ? 'bg-sky-500' : 'bg-orange-500';
               return (
-                <button key={t.id} onClick={() => openTable(t)} className={`rounded-xl border-2 p-3 text-left transition ${cls}`}>
-                  <div className="flex items-center justify-between">
+                <button key={t.id} onClick={() => openTable(t)} className="relative overflow-hidden rounded-2xl border border-stone-200/80 bg-white p-3.5 text-left shadow-[0_1px_2px_rgba(28,25,23,.04)] transition hover:shadow-md active:scale-[.98]">
+                  <span className={`absolute inset-x-0 top-0 h-1.5 ${bar}`} />
+                  <div className="mt-1 flex items-center justify-between">
                     <span className="text-xl font-bold">{t.name}</span>
-                    <span className="text-xs text-stone-500">{t.seats} seats</span>
+                    <span className="text-xs text-stone-400">{t.seats} seats</span>
                   </div>
                   {o ? (
-                    <div className="mt-2 text-sm">
-                      <div className="font-semibold">{inr(tot)}</div>
-                      <div className="text-xs text-stone-600">#{o.no} · {mins(o.createdAt)} min · {o.items.reduce((a, l) => a + l.qty, 0)} items</div>
+                    <div className="mt-2">
+                      <div className="text-lg font-bold text-stone-800">{inr(tot)}</div>
+                      <div className="text-xs text-stone-500">{o.billed ? 'Bill printed' : 'Running'} · {mins(o.createdAt)} min · {o.items.reduce((a, l) => a + l.qty, 0)} items</div>
                     </div>
+                  ) : rv ? (
+                    <div className="mt-2 text-sm font-medium text-violet-600"><CalendarClock size={13} className="mr-1 inline" />{fmtTime(rv.at)} · {rv.name.split(' ')[0]}</div>
                   ) : (
-                    <div className="mt-2 text-sm text-emerald-700">Available</div>
+                    <div className="mt-2 text-sm text-emerald-600">Available</div>
                   )}
                 </button>
               );
@@ -71,20 +68,23 @@ export default function Tables({ go }) {
 
       {nonDine.length > 0 && (
         <div>
-          <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-stone-500">Takeaway / Delivery in progress</h3>
+          <h3 className="mb-2.5 text-[11px] font-semibold uppercase tracking-widest text-stone-400">Takeaway / Delivery in progress</h3>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {nonDine.map((o) => (
-              <Card key={o.id} className="cursor-pointer p-3 hover:border-orange-400" onClick={() => go('pos', o.id)}>
-                <div className="flex justify-between text-sm font-semibold">
-                  <span>{o.type === 'take' ? 'Takeaway' : 'Delivery'} #{o.no}</span>
-                  <span>{inr(calcTotals(o, data.settings).total)}</span>
-                </div>
+              <Card key={o.id} className="cursor-pointer p-3.5 hover:shadow-md" onClick={() => go('pos', o.id)}>
+                <div className="flex justify-between text-sm font-semibold"><span>{o.type === 'take' ? 'Takeaway' : 'Delivery'} #{o.no}</span><span>{inr(calcTotals(o, data.settings).total)}</span></div>
                 <div className="text-xs text-stone-500">{o.guest?.name || 'Guest'} {o.guest?.phone || ''}</div>
               </Card>
             ))}
           </div>
         </div>
       )}
+
+      <div className="mt-6 flex flex-wrap gap-4 text-xs text-stone-500">
+        {[['bg-emerald-400', 'Free'], ['bg-orange-500', 'Running'], ['bg-sky-500', 'Bill printed'], ['bg-violet-400', 'Reserved soon']].map(([c, n]) => (
+          <span key={n} className="flex items-center gap-1.5"><i className={`h-2.5 w-2.5 rounded-full ${c}`} /> {n}</span>
+        ))}
+      </div>
 
       {guestModal && (
         <Modal

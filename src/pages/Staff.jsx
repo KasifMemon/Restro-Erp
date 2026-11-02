@@ -29,6 +29,10 @@ export default function Staff() {
       <PageHeader title="Staff" sub={`${data.staff.length} staff · monthly payroll ${inr(payroll)}`}>
         <Btn onClick={() => setEdit({ id: uid('e'), name: '', role: 'Waiter', phone: '', salary: 0, attendance: {} })}><Plus size={16} /> Add Staff</Btn>
       </PageHeader>
+      <div className="mb-4 rounded-2xl border border-orange-100 bg-orange-50 p-3 text-sm text-orange-800">
+        <b>PIN login:</b> give at least one Owner/Manager a 4-digit PIN to turn on the lock screen. Then each person sees only their modules —
+        Cashier: billing, bills, cash register · Waiter: tables & billing · Chef/Cook: kitchen (& stock) · Delivery: bills.
+      </div>
       <Card>
         <Table head={['Name', 'Role', 'Phone', { t: 'Salary / mo', cls: 'text-right' }, "Today's attendance", { t: `Days (${elapsed} so far)`, cls: 'text-right' }, { t: 'Earned so far', cls: 'text-right' }, '']}>
           {data.staff.map((e) => {
@@ -37,7 +41,7 @@ export default function Staff() {
             return (
               <tr key={e.id}>
                 <td className="px-3 py-2 font-medium">{e.name}</td>
-                <td className="px-3 py-2">{e.role}</td>
+                <td className="px-3 py-2">{e.role}{e.pin && <span className="ml-1 text-xs text-stone-400">🔒</span>}</td>
                 <td className="px-3 py-2">{e.phone}</td>
                 <td className="px-3 py-2 text-right">{inr(e.salary)}</td>
                 <td className="px-3 py-2">
@@ -59,12 +63,13 @@ export default function Staff() {
         </Table>
       </Card>
       {edit && (
-        <Modal title="Staff member" onClose={() => setEdit(null)} footer={<><Btn variant="ghost" onClick={() => setEdit(null)}>Cancel</Btn><Btn disabled={!edit.name.trim()} onClick={() => { s.save('staff', { ...edit, salary: +edit.salary }); setEdit(null); }}>Save</Btn></>}>
+        <Modal title="Staff member" onClose={() => setEdit(null)} footer={<><Btn variant="ghost" onClick={() => setEdit(null)}>Cancel</Btn><Btn disabled={!edit.name.trim() || (edit.pin && edit.pin.length !== 4)} onClick={() => { s.save('staff', { ...edit, salary: +edit.salary }); setEdit(null); }}>Save</Btn></>}>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Name" className="col-span-2"><input className={inputCls} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} /></Field>
             <Field label="Role"><select className={inputCls} value={edit.role} onChange={(e) => setEdit({ ...edit, role: e.target.value })}>{ROLES.map((r) => <option key={r}>{r}</option>)}</select></Field>
             <Field label="Phone"><input className={inputCls} value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} /></Field>
-            <Field label="Monthly salary (₹)" className="col-span-2"><input type="number" className={inputCls} value={edit.salary} onChange={(e) => setEdit({ ...edit, salary: e.target.value })} /></Field>
+            <Field label="Login PIN (4 digits, optional)"><input className={inputCls} inputMode="numeric" maxLength={4} placeholder="e.g. 1234" value={edit.pin || ''} onChange={(e) => setEdit({ ...edit, pin: e.target.value.replace(/\D/g, '').slice(0, 4) })} /></Field>
+            <Field label="Monthly salary (₹)"><input type="number" className={inputCls} value={edit.salary} onChange={(e) => setEdit({ ...edit, salary: e.target.value })} /></Field>
           </div>
         </Modal>
       )}
