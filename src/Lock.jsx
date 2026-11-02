@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Delete, UtensilsCrossed } from 'lucide-react';
 
-export default function Lock({ staff, name, onLogin }) {
+export default function Lock({ staff, name, logo, onLogin }) {
   const [sel, setSel] = useState(null);
   const [pin, setPin] = useState('');
   const [bad, setBad] = useState(false);
@@ -20,7 +20,7 @@ export default function Lock({ staff, name, onLogin }) {
     <div className="flex h-full items-center justify-center overflow-y-auto bg-gradient-to-b from-orange-50 to-stone-100 p-4">
       <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-xl">
         <div className="mb-5 text-center">
-          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-600 text-white shadow"><UtensilsCrossed size={26} /></div>
+          {logo ? <img src={logo} alt="" className="mx-auto mb-3 h-16 max-w-[160px] object-contain" /> : <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-600 text-white shadow"><UtensilsCrossed size={26} /></div>}
           <h1 className="text-xl font-bold">{name}</h1>
           <p className="text-sm text-stone-500">{sel ? `Enter PIN for ${sel.name}` : 'Who is working?'}</p>
         </div>

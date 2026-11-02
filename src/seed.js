@@ -1,14 +1,29 @@
 import { calcTotals, DAY, startOfDay } from './utils';
 
+const printerDefaults = { mode: 'browser', kind: 'usb', paper: 80, graphic: false, baud: 9600, deviceId: '' };
 export const defaultSettings = {
   name: 'Spice Garden Restaurant',
   address: '12, Main Road, Your City - 380001',
   phone: '+91 98765 43210',
   gstin: '',
+  fssai: '',
+  logo: '',
   taxInclusive: false,
   serviceCharge: 0,
   upiId: '',
   footer: 'Thank you! Visit again.',
+  setupDone: false,
+  loyaltyOn: true,
+  earnPer: 100,
+  redeemValue: 1,
+  autoBackup: true,
+  backupKeep: 7,
+  autoPrintBill: true,
+  autoPrintKot: true,
+  kotCopies: 1,
+  drawerKick: false,
+  receipt: { showLogo: true, showGstin: true, showFssai: true, showTax: true, showCustomer: true, qrMode: 'unpaid', reviewUrl: '', headerNote: '', poweredBy: '', sac: '' },
+  printers: { bill: { ...printerDefaults }, kitchen: { ...printerDefaults, mode: 'browser' } },
 };
 
 const cats = [
@@ -69,14 +84,14 @@ function rng(seed) {
 
 export function emptyData() {
   return {
-    settings: { ...defaultSettings },
+    settings: structuredClone(defaultSettings),
     categories: [], menu: [], tables: [], orders: [], kots: [], ingredients: [], stockLog: [],
     suppliers: [], purchases: [], customers: [], staff: [], expenses: [], reservations: [], dayCloses: [], counters: { order: 1, kot: 1, bill: 1 },
   };
 }
 
 export function seed({ history = true } = {}) {
-  const settings = { ...defaultSettings };
+  const settings = structuredClone(defaultSettings);
   const categories = cats.map(([id, name]) => ({ id, name }));
   const ingredients = ings.map(([id, name, unit, stock, min, cost]) => ({ id, name, unit, stock, min, cost }));
   const menu = items.map(([id, name, catId, price, veg, recipe]) => ({

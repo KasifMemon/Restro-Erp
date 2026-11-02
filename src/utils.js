@@ -12,8 +12,20 @@ export const fmtDate = (ts) => new Date(ts).toLocaleDateString('en-IN', { day: '
 export const fmtDT = (ts) => fmtDate(ts) + ', ' + fmtTime(ts);
 export const startOfDay = (ts) => { const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); };
 export const DAY = 86400000;
+export const ago = (ts) => {
+  if (!ts) return 'never';
+  const m = Math.round((Date.now() - ts) / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return m + ' min ago';
+  if (m < 1440) return Math.round(m / 60) + ' h ago';
+  return Math.round(m / 1440) + ' day(s) ago';
+};
 
-/** Bill maths: discount -> GST per line (CGST+SGST) -> service charge -> round off */
+/** UPI deep-link used for the payment QR (amount is baked in) */
+export const upiLink = (s, amt, note) =>
+  `upi://pay?pa=${encodeURIComponent(s.upiId)}&pn=${encodeURIComponent(s.name)}&am=${Number(amt).toFixed(2)}&cu=INR&tn=${encodeURIComponent(note || '')}`;
+
+/** Bill maths: discount -> loyalty redeem -> GST per line (CGST+SGST) -> service charge -> round off */
 export function calcTotals(order, settings) {
   const lines = (order.items || []).filter((l) => l.qty > 0);
   const incl = !!settings.taxInclusive;
@@ -27,7 +39,8 @@ export function calcTotals(order, settings) {
   const d = order.discount || { type: 'pct', value: 0 };
   let disc = d.type === 'pct' ? (sub * (Number(d.value) || 0)) / 100 : Number(d.value) || 0;
   disc = Math.min(Math.max(disc, 0), sub);
-  const taxable = sub - disc;
+  const redeem = Math.min(Math.max(Number(order.redeem) || 0, 0), sub - disc);
+  const taxable = sub - disc - redeem;
   const ratio = sub ? taxable / sub : 0;
   const taxByRate = {};
   let tax = 0;
@@ -42,7 +55,7 @@ export function calcTotals(order, settings) {
   const sc = order.type === 'dine' && !order.scOff ? (taxable * (settings.serviceCharge || 0)) / 100 : 0;
   const raw = taxable + tax + sc;
   const total = Math.round(raw);
-  return { sub, disc, taxable, tax, cgst: tax / 2, sgst: tax / 2, sc, round: total - raw, total, taxByRate, qty: lines.reduce((a, l) => a + l.qty, 0) };
+  return { sub, disc, redeem, taxable, tax, cgst: tax / 2, sgst: tax / 2, sc, round: total - raw, total, taxByRate, qty: lines.reduce((a, l) => a + l.qty, 0) };
 }
 
 export function downloadCSV(name, rows) {
@@ -74,64 +87,47 @@ export function printHTML(html) {
   doc.close();
   setTimeout(() => {
     try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { /* ignore */ }
-    setTimeout(() => f.remove(), 3000);
-  }, 250);
+    setTimeout(() => f.remove(), 4000);
+  }, 400);
 }
 
-const css = `<style>
-@page{size:80mm auto;margin:2mm}
-body{font-family:'Courier New',monospace;font-size:12px;width:72mm;margin:0;color:#000}
-h1{font-size:16px;text-align:center;margin:0}.c{text-align:center}.r{text-align:right}
-.row{display:flex;justify-content:space-between}.hr{border-top:1px dashed #000;margin:5px 0}
-table{width:100%;border-collapse:collapse}td,th{padding:1px 0;vertical-align:top;font-size:12px}th{text-align:left;border-bottom:1px dashed #000}
-.b{font-weight:bold}.big{font-size:15px}
-</style>`;
-
-const money = (n) => (Number(n) || 0).toFixed(2);
-
-export function receiptHTML(order, s, tableName, totals, qr) {
-  const t = totals || order.totals;
-  const lines = order.items.filter((l) => l.qty > 0);
-  const rates = Object.entries(t.taxByRate || {});
-  return `<html><head>${css}</head><body>
-<h1>${s.name}</h1>
-<div class="c">${s.address || ''}</div>
-<div class="c">${s.phone ? 'Ph: ' + s.phone : ''}</div>
-${s.gstin ? `<div class="c">GSTIN: ${s.gstin}</div>` : ''}
-<div class="hr"></div>
-<div class="row"><span>Bill: ${order.billNo ? '#' + order.billNo : '(Provisional)'}</span><span>Order #${order.no}</span></div>
-<div class="row"><span>${fmtDT(order.paidAt || Date.now())}</span><span>${order.type === 'dine' ? tableName || '' : order.type === 'take' ? 'Takeaway' : 'Delivery'}</span></div>
-${order.guest?.name ? `<div>Customer: ${order.guest.name} ${order.guest.phone || ''}</div>` : ''}
-${order.type === 'delivery' && order.guest?.address ? `<div>Addr: ${order.guest.address}</div>` : ''}
-<div class="hr"></div>
-<table><tr><th>Item</th><th class="r">Qty</th><th class="r">Rate</th><th class="r">Amt</th></tr>
-${lines.map((l) => `<tr><td>${l.name}</td><td class="r">${l.qty}</td><td class="r">${money(l.price)}</td><td class="r">${money(l.price * l.qty)}</td></tr>`).join('')}
-</table>
-<div class="hr"></div>
-<div class="row"><span>Sub Total${s.taxInclusive ? ' (excl. tax)' : ''}</span><span>${money(t.sub)}</span></div>
-${t.disc ? `<div class="row"><span>Discount</span><span>-${money(t.disc)}</span></div>` : ''}
-${t.sc ? `<div class="row"><span>Service Charge (${s.serviceCharge}%)</span><span>${money(t.sc)}</span></div>` : ''}
-${rates.map(([r, v]) => `<div class="row"><span>CGST ${r / 2}%</span><span>${money(v.tax / 2)}</span></div><div class="row"><span>SGST ${r / 2}%</span><span>${money(v.tax / 2)}</span></div>`).join('')}
-${Math.abs(t.round) > 0.004 ? `<div class="row"><span>Round off</span><span>${money(t.round)}</span></div>` : ''}
-<div class="hr"></div>
-<div class="row b big"><span>TOTAL</span><span>₹${t.total}</span></div>
-<div class="hr"></div>
-${(order.payments || []).map((p) => `<div class="row"><span>Paid by ${p.mode.toUpperCase()}</span><span>${money(p.amount)}</span></div>`).join('')}
-${order.due ? `<div class="row"><span>Credit / Due</span><span>${money(order.due)}</span></div>` : ''}
-${s.upiId && !order.payments?.length ? `<div class="c">Pay via UPI: ${s.upiId}</div>${qr ? `<div class="c"><img src="${qr}" width="150" height="150"/></div>` : ''}` : ''}
-<div class="hr"></div>
-<div class="c">${s.footer || ''}</div>
-</body></html>`;
+/** Resize an uploaded logo to a small PNG data-URL (keeps settings/backups light) */
+export function fileToLogo(file, maxW = 360) {
+  return new Promise((resolve, reject) => {
+    const rd = new FileReader();
+    rd.onerror = reject;
+    rd.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const k = Math.min(1, maxW / img.width);
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        const g = c.getContext('2d');
+        g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+        g.drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL('image/png'));
+      };
+      img.src = rd.result;
+    };
+    rd.readAsDataURL(file);
+  });
 }
 
-export function kotHTML(kot, s) {
-  return `<html><head>${css}</head><body>
-<h1>KOT #${kot.no}</h1>
-<div class="c b big">${kot.label}</div>
-<div class="row"><span>Order #${kot.orderNo}</span><span>${fmtTime(kot.time)}</span></div>
-<div class="hr"></div>
-<table>${kot.items.map((i) => `<tr><td class="b big">${i.qty} x</td><td class="b big">${i.name}${i.note ? `<div style="font-weight:normal;font-size:11px">» ${i.note}</div>` : ''}</td></tr>`).join('')}</table>
-<div class="hr"></div>
-<div class="c">${s.name}</div>
-</body></html>`;
+/** Minimal CSV parser (quotes, commas, newlines) */
+export function parseCSV(text) {
+  const rows = [];
+  let row = [], cur = '', q = false;
+  const t = text.replace(/^﻿/, '');
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i];
+    if (q) {
+      if (c === '"' && t[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(cur); cur = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && t[i + 1] === '\n') i++; row.push(cur); rows.push(row); row = []; cur = ''; }
+    else cur += c;
+  }
+  if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+  return rows.filter((r) => r.some((x) => x.trim() !== ''));
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, Armchair, ReceiptText, ChefHat, UtensilsCrossed, Package, Truck, Users, UserCog, Wallet,
   BarChart3, Settings as Cog, ScrollText, CalendarClock, Banknote, MoreHorizontal, Lock as LockIcon, X,
@@ -6,6 +6,8 @@ import {
 import { useStore } from './store.jsx';
 import { ACCESS, ALL, canVoid } from './access.js';
 import Lock from './Lock.jsx';
+import Setup from './Setup.jsx';
+import { autoTick } from './backup.js';
 import Dashboard from './pages/Dashboard.jsx';
 import Tables from './pages/Tables.jsx';
 import POS from './pages/POS.jsx';
@@ -34,17 +36,51 @@ const GROUPS = [
 ];
 const BOTTOM = ['tables', 'pos', 'kitchen', 'orders', 'dashboard'];
 
+function Toasts() {
+  const [list, setList] = useState([]);
+  useEffect(() => {
+    const h = (e) => {
+      const t = e.detail;
+      setList((l) => [...l.slice(-2), t]);
+      setTimeout(() => setList((l) => l.filter((x) => x.id !== t.id)), 5000);
+    };
+    window.addEventListener('restro-toast', h);
+    return () => window.removeEventListener('restro-toast', h);
+  }, []);
+  return (
+    <div className="pointer-events-none fixed inset-x-0 top-3 z-[90] flex flex-col items-center gap-2 px-3">
+      {list.map((t) => (
+        <div key={t.id} className={`sheet-in pointer-events-auto max-w-md rounded-xl px-4 py-2.5 text-sm font-medium text-white shadow-lg ${t.tone === 'warn' ? 'bg-red-600' : t.tone === 'ok' ? 'bg-emerald-600' : 'bg-stone-800'}`}>{t.msg}</div>
+      ))}
+    </div>
+  );
+}
+
 export default function App() {
-  const { data } = useStore();
+  const { data, get } = useStore();
+
+  // automatic backups: on start, then every 10 min (only saves when something changed)
+  useEffect(() => {
+    try { navigator.storage?.persist?.(); } catch { /* ignore */ }
+    const run = () => autoTick(get()).catch(() => {});
+    const first = setTimeout(run, 4000);
+    const iv = setInterval(run, 10 * 60 * 1000);
+    const vis = () => { if (document.visibilityState === 'hidden') run(); };
+    document.addEventListener('visibilitychange', vis);
+    return () => { clearTimeout(first); clearInterval(iv); document.removeEventListener('visibilitychange', vis); };
+    // eslint-disable-next-line
+  }, []);
+
   const [page, setPage] = useState('tables');
   const [orderId, setOrderId] = useState(null);
   const [more, setMore] = useState(false);
   const [uid, setUid] = useState(() => { try { return sessionStorage.getItem('restro-user'); } catch { return null; } });
 
   const lockOn = data.staff.some((s) => s.pin);
+  if (!data.settings.setupDone) return <><Setup /><Toasts /></>;
   const user = data.staff.find((s) => s.id === uid);
   if (lockOn && !user) {
-    return <Lock staff={data.staff.filter((s) => s.pin)} name={data.settings.name} onLogin={(id) => { try { sessionStorage.setItem('restro-user', id); } catch { /* ignore */ } setUid(id); setPage('tables'); }} />;
+    return <><Toasts /><Lock staff={data.staff.filter((s) => s.pin)} name={data.settings.name} logo={data.settings.logo} onLogin={(id) => { try { sessionStorage.setItem('restro-user', id); } catch { /* ignore */ } setUid(id); setPage('tables'); }} /></>;
   }
   const role = lockOn ? user.role : 'Owner';
   const allowed = lockOn ? ACCESS[role] || ['tables'] : ALL;
@@ -79,10 +115,13 @@ export default function App() {
 
   return (
     <div className="flex h-full">
+      <Toasts />
       {/* Desktop sidebar */}
       <aside className="hidden w-60 shrink-0 flex-col border-r border-stone-200 bg-white lg:flex">
         <div className="flex items-center gap-3 px-4 py-5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-600 text-white shadow-sm"><UtensilsCrossed size={20} /></div>
+          {data.settings.logo
+            ? <img src={data.settings.logo} alt="" className="h-10 w-10 shrink-0 rounded-xl border border-stone-200 bg-white object-contain" />
+            : <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-600 text-white shadow-sm"><UtensilsCrossed size={20} /></div>}
           <div className="min-w-0">
             <div className="truncate text-sm font-bold">{data.settings.name}</div>
             <div className="text-[11px] text-stone-400">RestroERP</div>

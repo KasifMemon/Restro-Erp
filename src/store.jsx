@@ -9,7 +9,13 @@ export const useStore = () => useContext(Ctx);
 // fill in anything missing (older saves / backups) so new modules never crash
 export function normalize(o) {
   const b = emptyData();
-  return { ...b, ...o, settings: { ...b.settings, ...(o.settings || {}) }, counters: { ...b.counters, ...(o.counters || {}) } };
+  const os = o.settings || {};
+  const settings = {
+    ...b.settings, ...os,
+    receipt: { ...b.settings.receipt, ...(os.receipt || {}) },
+    printers: { bill: { ...b.settings.printers.bill, ...(os.printers?.bill || {}) }, kitchen: { ...b.settings.printers.kitchen, ...(os.printers?.kitchen || {}) } },
+  };
+  return { ...b, ...o, settings, counters: { ...b.counters, ...(o.counters || {}) } };
 }
 
 function load() {
@@ -150,7 +156,7 @@ export function StoreProvider({ children }) {
         if (!o || o.status !== 'paid') return;
         o.status = 'void'; o.voidReason = reason; o.voidedAt = Date.now();
         const c = d.customers.find((x) => x.id === o.customerId);
-        if (c) { c.due = Math.max(0, c.due - (o.due || 0)); c.points = Math.max(0, c.points - Math.floor(o.totals.total / 100)); }
+        if (c) { c.due = Math.max(0, c.due - (o.due || 0)); c.points = Math.max(0, c.points - (o.earnedPts ?? Math.floor(o.totals.total / 100)) + (o.redeemedPts || 0)); }
       });
     },
     cancelOrder(orderId) {
@@ -160,11 +166,11 @@ export function StoreProvider({ children }) {
         d.kots.forEach((k) => { if (k.orderId === orderId && k.status !== 'served') k.status = 'served'; });
       });
     },
-    settle(orderId, { payments, discount, due, customerId, scOff, guest }) {
+    settle(orderId, { payments, discount, due, customerId, scOff, guest, redeem }) {
       update((d) => {
         const o = d.orders.find((x) => x.id === orderId);
         if (!o) return;
-        o.discount = discount; o.scOff = !!scOff; o.guest = guest || o.guest;
+        o.discount = discount; o.scOff = !!scOff; o.guest = guest || o.guest; o.redeem = Math.max(0, Number(redeem) || 0);
         o.totals = calcTotals(o, d.settings);
         o.payments = payments; o.due = due || 0;
         o.status = 'paid'; o.paidAt = Date.now(); o.billNo = d.counters.bill++;
@@ -177,7 +183,10 @@ export function StoreProvider({ children }) {
         if (c) {
           o.customerId = c.id;
           c.due += o.due;
-          c.points += Math.floor(o.totals.total / 100);
+          const st = d.settings;
+          o.redeemedPts = st.loyaltyOn ? Math.min(c.points, Math.round(o.totals.redeem / (st.redeemValue || 1))) : 0;
+          o.earnedPts = st.loyaltyOn ? Math.floor(o.totals.total / (st.earnPer || 100)) : 0;
+          c.points = Math.max(0, c.points - o.redeemedPts + o.earnedPts);
         }
         d.kots.forEach((k) => { if (k.orderId === orderId && k.status === 'ready') { k.status = 'served'; } });
       });
