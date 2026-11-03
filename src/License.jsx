@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { KeyRound, ShieldAlert, Clock } from 'lucide-react';
-import { LICENSE_REQUIRED, REASON_TEXT, cloudBackup, getCloudMeta, licenseVerdict, setCloudMeta, verifyLicense, getLicenseCache } from './cloud.js';
+import Login from './Login.jsx';
+import { LICENSE_REQUIRED, REASON_TEXT, customerSession, cloudBackup, getCloudMeta, licenseVerdict, setCloudMeta, verifyLicense, getLicenseCache } from './cloud.js';
 import { useStore } from './store.jsx';
 import { Btn, inputCls } from './components.jsx';
 
@@ -21,7 +22,7 @@ function Activate({ verdict, onDone }) {
     <div className="flex min-h-full items-center justify-center bg-slate-50 p-4">
       <form onSubmit={go} className="w-full max-w-sm space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-xl">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-50 text-teal-700"><KeyRound size={24} /></div>
-        <div><h1 className="text-xl font-bold text-slate-800">Activate RestroERP</h1><p className="mt-1 text-sm text-slate-500">Enter the licence key you received from your provider.</p></div>
+        <div><h1 className="text-xl font-bold text-slate-800">Activate RestroERP</h1><p className="mt-1 text-sm text-slate-500">One-time step: enter the licence key your provider sent you.</p></div>
         <input className={`${inputCls} font-mono uppercase tracking-wide`} value={key} onChange={(e) => setKey(e.target.value)} placeholder="RESTRO-XXXXXXXXXX" autoCapitalize="characters" autoFocus />
         {err && <div role="alert" className="flex gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-700"><ShieldAlert size={16} className="mt-0.5 shrink-0" />{err}</div>}
         <Btn className="w-full" size="lg" disabled={busy || key.trim().length < 8}>{busy ? 'Checking…' : 'Activate'}</Btn>
@@ -36,15 +37,22 @@ export default function LicenseGate({ children }) {
   const setupDone = data.settings.setupDone;
   const [verdict, setVerdict] = useState(() => (LICENSE_REQUIRED ? licenseVerdict() : { state: 'ok' }));
   const [asking, setAsking] = useState(false);
+  const [session, setSession] = useState(() => (LICENSE_REQUIRED ? customerSession() : null));
+  useEffect(() => {
+    const h = () => { setSession(customerSession()); setVerdict(LICENSE_REQUIRED ? licenseVerdict() : { state: 'ok' }); };
+    window.addEventListener('restro-auth', h);
+    return () => window.removeEventListener('restro-auth', h);
+  }, []);
 
   const refresh = useCallback(async () => {
     const c = getLicenseCache();
     if (c?.key) {
       const d = get(); const st = d.settings;
-      await verifyLicense(c.key, {
+      const resp = await verifyLicense(c.key, {
         name: st.name, address: st.address, phone: st.phone, gstin: st.gstin, fssai: st.fssai, setup_done: st.setupDone,
         tables: d.tables.length, menu: d.menu.length, staff: d.staff.length, orders: d.orders.length, bills: d.orders.filter((o) => o.status === 'paid').length,
       });
+      if (resp?.reason === 'auth') { setSession(customerSession()); return; }
       // First run: pre-fill the restaurant name from the licence so setup starts with it
       const r = getLicenseCache()?.result;
       if (r?.valid && r.restaurant && !st.setupDone && st.name !== r.restaurant) setSettings({ name: r.restaurant });
@@ -55,12 +63,12 @@ export default function LicenseGate({ children }) {
 
   useEffect(() => {
     if (!LICENSE_REQUIRED) return undefined;
-    refresh();
+    if (session) refresh();
     const iv = setInterval(refresh, 6 * 3600 * 1000);
     const vis = () => { if (document.visibilityState === 'visible') refresh(); };
     document.addEventListener('visibilitychange', vis);
     return () => { clearInterval(iv); document.removeEventListener('visibilitychange', vis); };
-  }, [refresh]);
+  }, [refresh, session]);
 
   // Send the finished setup details to the provider as soon as the wizard completes
   useEffect(() => { if (LICENSE_REQUIRED && setupDone) refresh(); }, [setupDone, refresh]);
@@ -79,7 +87,8 @@ export default function LicenseGate({ children }) {
   }, [verdict.state]);
 
   if (!LICENSE_REQUIRED) return children;
-  if (verdict.state === 'blocked' || asking) return <Activate verdict={asking ? { key: verdict.key } : verdict} onDone={() => { setAsking(false); setVerdict(licenseVerdict()); }} />;
+  if (!session) return <Login onDone={() => setSession(customerSession())} />;
+  if (verdict.state === 'blocked' || asking) return <Activate verdict={asking ? { key: verdict.key } : verdict} onDone={() => { setAsking(false); setVerdict(licenseVerdict()); refresh(); }} />;
 
   const warn = verdict.state === 'trial' ? `Free trial: ${verdict.daysLeft} day${verdict.daysLeft === 1 ? '' : 's'} left`
     : verdict.state === 'grace' ? `Offline ${verdict.offlineDays} days: connect to the internet soon`

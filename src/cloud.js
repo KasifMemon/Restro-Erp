@@ -26,10 +26,45 @@ export function deviceId() {
 }
 const deviceLabel = () => (navigator.userAgent.match(/\(([^)]+)\)/)?.[1] || 'browser').slice(0, 60);
 
+/* ---------- customer login ---------- */
+const AKEY = 'restro-auth-v1';
+const loadAuth = () => read(AKEY, null);
+const saveAuth = (a) => { try { a ? localStorage.setItem(AKEY, JSON.stringify(a)) : localStorage.removeItem(AKEY); } catch { /* ignore */ } };
+export const customerSession = () => { const a = loadAuth(); return a?.refresh_token ? { email: a.email, uid: a.uid } : null; };
+const emitAuth = () => { try { window.dispatchEvent(new Event('restro-auth')); } catch { /* ignore */ } };
+
+async function authGrant(grant, body) {
+  const res = await fetch(`${BASE}/auth/v1/token?grant_type=${grant}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', apikey: ANON }, body: JSON.stringify(body),
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok || !j.access_token) { const e = new Error(j.error_description || j.msg || 'Sign-in failed'); e.auth = res.status >= 400 && res.status < 500; throw e; }
+  return { access_token: j.access_token, refresh_token: j.refresh_token, expires_at: Date.now() + (j.expires_in || 3600) * 1000, email: j.user?.email || body.email || '', uid: j.user?.id || '' };
+}
+export async function customerSignIn(email, password) {
+  const a = await authGrant('password', { email: email.trim().toLowerCase(), password });
+  // A different account on this device must not inherit the previous licence
+  const c = getLicenseCache();
+  if (c && c.uid && c.uid !== a.uid) clearLicense();
+  saveAuth(a); emitAuth(); return a;
+}
+export function customerSignOut() { saveAuth(null); emitAuth(); }
+async function userToken() {
+  let a = loadAuth();
+  if (!a) return null;
+  if (a.expires_at - Date.now() < 60000) {
+    try { a = await authGrant('refresh_token', { refresh_token: a.refresh_token }); saveAuth(a); }
+    catch (e) { if (e.auth) { saveAuth(null); emitAuth(); return null; } throw e; } // network errors keep the session (offline use)
+  }
+  return a.access_token;
+}
+
 async function fn(name, body) {
+  const token = await userToken();
+  if (!token) return { valid: false, ok: false, reason: 'auth' };
   const res = await fetch(`${BASE}/functions/v1/${name}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: ANON, Authorization: `Bearer ${ANON}` },
+    headers: { 'Content-Type': 'application/json', apikey: ANON, Authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
   });
   return res.json();
@@ -51,8 +86,9 @@ export async function verifyLicense(key, profile) {
   try {
     r = await fn('verify-license', { key, device_id: deviceId(), label: deviceLabel(), app_version: APP_VERSION, profile });
   } catch { return { offline: true }; }
+  if (r && r.reason === 'auth') return r;
   if (r && typeof r.valid === 'boolean') {
-    write('restro-license-v1', { key, result: r, lastCheck: Date.now(), lastOk: r.valid ? Date.now() : (getLicenseCache()?.lastOk || 0), seen: Date.now() });
+    write('restro-license-v1', { key, uid: loadAuth()?.uid || '', result: r, lastCheck: Date.now(), lastOk: r.valid ? Date.now() : (getLicenseCache()?.lastOk || 0), seen: Date.now() });
   }
   return r;
 }
@@ -82,6 +118,8 @@ export function licenseVerdict() {
 
 export const REASON_TEXT = {
   not_found: 'This licence key was not found. Check it and try again.',
+  not_yours: 'This licence key belongs to a different account. Use the key sent to you.',
+  auth: 'Please sign in again.',
   bad_key: 'That does not look like a valid key. It starts with RESTRO-.',
   expired: 'Your subscription has expired. Please renew to continue.',
   suspended: 'This licence is suspended. Please contact support.',
@@ -90,7 +128,7 @@ export const REASON_TEXT = {
   device_limit: 'This licence is already used on the maximum number of devices.',
   verify: 'The licence could not be verified for several days. Connect to the internet once to continue.',
   clock: 'The device clock looks wrong. Fix the date and time, then reopen the app.',
-  trial_over: 'Your free trial has ended. Enter a licence key to continue.',
+  trial_over: 'One-time activation: enter the licence key you received.',
   invalid: 'This licence is not valid.',
 };
 
@@ -144,3 +182,12 @@ export async function devRest(path, { method = 'GET', body, prefer } = {}) {
   return j;
 }
 export const devRpc = (name, args) => devRest(`rpc/${name}`, { method: 'POST', body: args || {} });
+
+export async function devFn(name, body) {
+  const token = await devToken();
+  const res = await fetch(`${BASE}/functions/v1/${name}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', apikey: ANON, Authorization: `Bearer ${token}` }, body: JSON.stringify(body),
+  });
+  return res.json();
+}
+export const CUSTOMER_URL = import.meta.env.VITE_CUSTOMER_URL || 'https://restro-erp-customer.vercel.app';

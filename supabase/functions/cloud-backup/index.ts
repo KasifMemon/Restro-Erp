@@ -25,9 +25,12 @@ Deno.serve(async (req) => {
   }
 
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
-  const { data: lic } = await db.from('licenses').select('id, status, expires_on').eq('license_key', key).maybeSingle();
+  const token = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
+  const { data: { user } } = await db.auth.getUser(token);
+  if (!user) return json({ ok: false, reason: 'auth' }, 401);
+  const { data: lic } = await db.from('licenses').select('id, status, expires_on, customers(user_id)').eq('license_key', key).maybeSingle();
   const today = new Date().toISOString().slice(0, 10);
-  if (!lic || lic.status !== 'active' || lic.expires_on < today) return json({ ok: false, reason: 'license' }, 403);
+  if (!lic || (lic as any).customers?.user_id !== user.id || lic.status !== 'active' || lic.expires_on < today) return json({ ok: false, reason: 'license' }, 403);
   const { data: dev } = await db.from('license_devices').select('id').eq('license_id', lic.id).eq('device_id', deviceId).maybeSingle();
   if (!dev) return json({ ok: false, reason: 'device' }, 403);
 

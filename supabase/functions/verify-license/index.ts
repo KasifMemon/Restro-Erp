@@ -26,11 +26,16 @@ Deno.serve(async (req) => {
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
     auth: { persistSession: false },
   });
+  const token = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '');
+  const { data: { user } } = await db.auth.getUser(token);
+  if (!user) return json({ valid: false, reason: 'auth' }, 401);
 
   const { data: lic } = await db.from('licenses')
-    .select('id, plan, status, starts_on, expires_on, max_devices, customers(restaurant)')
+    .select('id, plan, status, starts_on, expires_on, max_devices, customers(restaurant, user_id)')
     .eq('license_key', key).maybeSingle();
   if (!lic) return json({ valid: false, reason: 'not_found' });
+
+  if ((lic as any).customers?.user_id !== user.id) return json({ valid: false, reason: 'not_yours' });
 
   const today = new Date().toISOString().slice(0, 10);
   const base = {

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ImagePlus, Plus, Trash2, UtensilsCrossed } from 'lucide-react';
 import { Btn, Field, inputCls } from './components.jsx';
 import { useStore } from './store.jsx';
@@ -11,7 +11,8 @@ export default function Setup() {
   const s = useStore();
   const base = s.data.settings;
   const [step, setStep] = useState(0);
-  const [f, setF] = useState({ name: '', address: '', phone: '', gstin: '', fssai: '', logo: '', owner: '', upiId: '', serviceCharge: 0, taxInclusive: false, footer: 'Thank you! Visit again.', reviewUrl: '' });
+  const [f, setF] = useState({ name: base.name && base.name !== 'Spice Garden Restaurant' ? base.name : '', address: '', phone: '', gstin: '', fssai: '', logo: '', owner: '', upiId: '', serviceCharge: 0, taxInclusive: false, footer: 'Thank you! Visit again.', reviewUrl: '' });
+  useEffect(() => { if (base.name && base.name !== 'Spice Garden Restaurant') setF((x) => (x.name ? x : { ...x, name: base.name })); }, [base.name]);
   const [secs, setSecs] = useState([{ name: 'Main Hall', count: 8, seats: 4 }]);
   const [start, setStart] = useState('sample');
   const fileRef = useRef();

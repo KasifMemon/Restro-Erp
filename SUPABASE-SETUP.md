@@ -43,3 +43,11 @@ Restaurant sales data is **not** synced live. It stays on each device; the cloud
 - Offline grace is 7 days; the app also locks if the device clock is moved back.
 - The two server functions were deployed and checked for security (anon cannot read tables or call `create_license`), but could not be called end-to-end from the build environment. Do one test: create a customer and licence in the developer app, activate it in the customer app, and press Back up now / Restore.
 - Two test licences (`RESTRO-TESTKEY001`, `RESTRO-TESTEXP001`) and a customer "ZZ TEST" remain in the database. They are revoked. Delete the customer "ZZ TEST" in the developer app or SQL Editor.
+
+## v3.8: customer login (email + password)
+Customers sign in with their own account, then enter their licence key once, then run the one-time setup.
+- You create each login in **Business admin -> Customers -> Create login** (a strong password is generated; copy or send it on WhatsApp). **Reset password** does the same for a forgotten password.
+- A licence key only works for the account of the customer it was issued to.
+- Staff inside a restaurant keep using the PIN lock (works offline).
+- **Turn off public sign-ups** (Supabase -> Authentication -> Sign In / Providers -> "Allow new users to sign up" off). Customers are created only by you.
+- Server functions: `verify-license`, `cloud-backup` (customer account required), `create-customer-account` (developer only).

@@ -6,6 +6,7 @@ import { autoTick, delSnap, downloadBackup, folderForget, folderRequest, folderS
 import { ago, downloadBlob, fmtDT } from '../utils.js';
 import { toast } from '../toast.js';
 import CloudBackupCard from './CloudBackupCard.jsx';
+import AccountCard from './AccountCard.jsx';
 
 const KIND = { auto: ['Auto', 'green'], manual: ['Manual', 'blue'], 'pre-restore': ['Before restore', 'yellow'], 'pre-reset': ['Before reset', 'yellow'] };
 
@@ -119,6 +120,7 @@ export default function BackupTab() {
         </div>
       </Card>
 
+      <AccountCard />
       <CloudBackupCard />
 
       <Card className="space-y-3 p-4 lg:col-span-2">

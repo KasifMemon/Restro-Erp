@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Copy, KeyRound, RefreshCw, Users, CreditCard, ScrollText, MessageCircle } from 'lucide-react';
 import { Btn, Card, Field, inputCls } from '../components.jsx';
-import { devRest, devRpc } from '../cloud.js';
+import { CUSTOMER_URL, devFn, devRest, devRpc } from '../cloud.js';
 
 const plusYear = (from, y = 1) => { const d = new Date(from || Date.now()); d.setFullYear(d.getFullYear() + y); return d.toISOString().slice(0, 10); };
 const plusMonth = (from) => { const d = new Date(from || Date.now()); d.setMonth(d.getMonth() + 1); return d.toISOString().slice(0, 10); };
+const genPassword = () => { const c = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'; const a = crypto.getRandomValues(new Uint32Array(12)); return Array.from(a, (n) => c[n % c.length]).join(''); };
 const today = () => new Date().toISOString().slice(0, 10);
 const money = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
@@ -17,6 +18,7 @@ export default function CloudAdmin() {
   const [busy, setBusy] = useState(false);
   const [cd, setCd] = useState({ restaurant: '', owner: '', phone: '', email: '', city: '' });
   const [ld, setLd] = useState({ customer: '', plan: 'Standard', expires: plusYear(), devices: 2, fee: 999 });
+  const [cred, setCred] = useState(null);
   const [pd, setPd] = useState({ license: '', amount: '', method: 'UPI', note: '' });
 
   const load = useCallback(async () => {
@@ -50,6 +52,31 @@ export default function CloudAdmin() {
     if (!lic || !(Number(pd.amount) > 0)) return setMsg('Choose a licence and enter an amount.');
     run(async () => { await devRest('payments', { method: 'POST', body: { customer_id: lic.customer_id, license_id: lic.id, amount: Number(pd.amount), method: pd.method, note: pd.note || null } }); setPd({ license: '', amount: '', method: 'UPI', note: '' }); }, 'Payment recorded.');
   };
+  const makeLogin = (c) => {
+    if (!c.email) return setMsg('Add the customer email first (edit the customer, or add them again with an email).');
+    const password = genPassword();
+    run(async () => {
+      const r = await devFn('create-customer-account', { action: 'create', customer_id: c.id, email: c.email, password });
+      if (!r.ok) throw new Error(r.message || { exists: 'Login already exists.', bad_email: 'Invalid email.', create_failed: 'Could not create login (email may already be used).' }[r.reason] || 'Failed');
+      setCred({ customer: c, email: c.email, password });
+    }, 'Login created. Copy the password now; it is shown only once.');
+  };
+  const resetLogin = (c) => {
+    const password = genPassword();
+    run(async () => {
+      const r = await devFn('create-customer-account', { action: 'set_password', customer_id: c.id, password });
+      if (!r.ok) throw new Error('Could not reset the password');
+      setCred({ customer: c, email: c.email, password });
+    }, 'Password reset. Copy the new password now.');
+  };
+  const credText = (c, email, password) => {
+    const lic = licenses.find((l) => l.customer_id === c.id && l.status === 'active');
+    return `Hello ${c.owner}, your RestroERP login:\nApp: ${CUSTOMER_URL}\nEmail: ${email}\nPassword: ${password}\n${lic ? `Licence key (enter once after login): ${lic.license_key}\n` : ''}Please change nothing; keep this private.`;
+  };
+  const sendCred = (c, email, password) => {
+    const ph = (c.phone || '').replace(/\D/g, '');
+    window.open(`https://wa.me/${ph.length === 10 ? '91' + ph : ph}?text=${encodeURIComponent(credText(c, email, password))}`, '_blank', 'noopener');
+  };
   const copy = async (t) => { try { await navigator.clipboard.writeText(t); setMsg('Copied.'); } catch { setMsg('Clipboard unavailable.'); } };
   const share = (l) => {
     const text = `Hello ${l.customers?.owner || ''}, your RestroERP licence key is ${l.license_key} (${l.plan}, valid until ${l.expires_on}).`;
@@ -65,7 +92,17 @@ export default function CloudAdmin() {
         {[['restaurant', 'Restaurant'], ['owner', 'Owner'], ['phone', 'Phone'], ['email', 'Email'], ['city', 'City']].map(([k, n]) => <Field key={k} label={n}><input className={inputCls} value={cd[k]} onChange={(e) => setCd({ ...cd, [k]: e.target.value })} /></Field>)}
       </div>
       <Btn onClick={addCustomer} disabled={busy}>Add customer</Btn>
-      <div className="divide-y divide-stone-100 text-sm">{customers.map((c) => <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-2"><div><b>{c.restaurant}</b> <span className="text-stone-500">· {c.owner}</span></div><span className="text-xs text-stone-400">{c.phone || ''} {c.city || ''}</span></div>)}{!customers.length && <p className="py-2 text-xs text-stone-400">No customers yet.</p>}</div>
+      {cred && <div className="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm">
+        <div className="font-semibold text-emerald-900">Login for {cred.customer.restaurant}</div>
+        <div className="font-mono text-xs break-all">{cred.email} / {cred.password}</div>
+        <div className="flex flex-wrap gap-2"><Btn size="sm" variant="ghost" onClick={() => copy(credText(cred.customer, cred.email, cred.password))}><Copy size={13} />Copy message</Btn><Btn size="sm" onClick={() => sendCred(cred.customer, cred.email, cred.password)}><MessageCircle size={13} />Send on WhatsApp</Btn><Btn size="sm" variant="ghost" onClick={() => setCred(null)}>Done</Btn></div>
+        <div className="text-[11px] text-emerald-800">This password is not stored anywhere readable. Reset it if lost.</div>
+      </div>}
+      <div className="divide-y divide-stone-100 text-sm">{customers.map((c) => <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+        <div><b>{c.restaurant}</b> <span className="text-stone-500">· {c.owner}</span><div className="text-xs text-stone-400">{c.email || 'no email'} {c.phone || ''} {c.city || ''}</div></div>
+        {c.user_id ? <div className="flex items-center gap-2"><span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">login active</span><Btn size="sm" variant="ghost" disabled={busy} onClick={() => window.confirm('Reset this customer\'s password?') && resetLogin(c)}>Reset password</Btn></div>
+          : <Btn size="sm" disabled={busy} onClick={() => makeLogin(c)}>Create login</Btn>}
+      </div>)}{!customers.length && <p className="py-2 text-xs text-stone-400">No customers yet.</p>}</div>
     </Card>
 
     <Card className="space-y-3 p-4">

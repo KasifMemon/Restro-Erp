@@ -1,0 +1,4 @@
+Edge Functions authenticate the caller themselves (verify_jwt=false) using the service-role client:
+  const { data: { user } } = await db.auth.getUser(token)
+verify-license / cloud-backup require a signed-in customer who owns the licence.
+create-customer-account requires a signed-in developer (row in developer_admins).
