@@ -3,6 +3,7 @@ import { Activity, Building2, Copy, Download, FileUp, Gauge, HardDrive, KeyRound
 import { Btn, Card, Field, inputCls } from '../components.jsx';
 import { useStore, normalize } from '../store.jsx';
 import { uid } from '../utils.js';
+import CloudAdmin from './CloudAdmin.jsx';
 
 const KEY_PREFIX = 'RESTRO-';
 const makeCode = (text) => text.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
@@ -107,48 +108,7 @@ export default function AdminTab() {
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">{Object.entries(counts).map(([k,v])=><div key={k} className="rounded-xl bg-white/10 p-3"><div className="text-[11px] text-stone-300">{k}</div><div className="mt-1 text-xl font-bold tabular-nums">{v}</div></div>)}</div>
     </div>
 
-    <Card className="space-y-4 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2"><div><div className="flex items-center gap-2"><Users size={19}/><h3 className="font-semibold">Master Admin · Customer & subscription accounts</h3></div><p className="mt-1 text-xs text-stone-500">Maintain restaurant customers, plans, licence references, expiry dates and manual payment records.</p></div><span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">{masterCustomers.length} accounts</span></div>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <Field label="Restaurant / customer name"><input className={inputCls} value={customerDraft.restaurant} onChange={e=>setCustomerDraft({...customerDraft,restaurant:e.target.value})} placeholder="Royal Restaurant"/></Field>
-        <Field label="Owner name"><input className={inputCls} value={customerDraft.owner} onChange={e=>setCustomerDraft({...customerDraft,owner:e.target.value})} placeholder="Owner full name"/></Field>
-        <Field label="Phone"><input className={inputCls} value={customerDraft.phone} onChange={e=>setCustomerDraft({...customerDraft,phone:e.target.value})} placeholder="Mobile number"/></Field>
-        <Field label="Email"><input className={inputCls} type="email" value={customerDraft.email} onChange={e=>setCustomerDraft({...customerDraft,email:e.target.value})} placeholder="owner@example.com"/></Field>
-        <Field label="Subscription plan"><select className={inputCls} value={customerDraft.plan} onChange={e=>setCustomerDraft({...customerDraft,plan:e.target.value})}><option>Basic</option><option>Standard</option><option>Professional</option><option>Enterprise</option><option>Custom</option></select></Field>
-        <Field label="Fee (₹)"><input className={inputCls} type="number" min="0" value={customerDraft.fee} onChange={e=>setCustomerDraft({...customerDraft,fee:e.target.value})}/></Field>
-        <Field label="Start date"><input className={inputCls} type="date" value={customerDraft.startDate} onChange={e=>setCustomerDraft({...customerDraft,startDate:e.target.value})}/></Field>
-        <Field label="Expiry date"><input className={inputCls} type="date" value={customerDraft.expiryDate} onChange={e=>setCustomerDraft({...customerDraft,expiryDate:e.target.value})}/></Field>
-        <Field label="Licence key / reference"><input className={inputCls} value={customerDraft.licenseKey} onChange={e=>setCustomerDraft({...customerDraft,licenseKey:e.target.value.toUpperCase()})} placeholder="RESTRO-ABC123"/></Field>
-        <Field label="Installed version"><input className={inputCls} value={customerDraft.version} onChange={e=>setCustomerDraft({...customerDraft,version:e.target.value})} placeholder="3.2"/></Field>
-      </div>
-      <div className="flex flex-wrap gap-2"><Btn onClick={saveMasterCustomer}><Plus size={15}/>{editingCustomer ? 'Update customer' : 'Add customer account'}</Btn>{editingCustomer&&<Btn variant="ghost" onClick={()=>{setEditingCustomer('');setCustomerDraft({ restaurant:'',owner:'',phone:'',email:'',plan:'Standard',fee:'999',startDate:new Date().toISOString().slice(0,10),expiryDate:'',licenseKey:'',version:'3.2' });}}><X size={15}/> Cancel edit</Btn>}</div>
-      {masterCustomers.length ? <div className="space-y-2">{masterCustomers.map(x=>{ const expired = x.expiryDate && x.expiryDate < new Date().toISOString().slice(0,10); return <div key={x.id} className="rounded-xl border border-stone-200 p-3"><div className="flex flex-wrap items-start gap-2"><div className="min-w-0 flex-1"><div className="font-semibold">{x.restaurant}</div><div className="text-xs text-stone-500">{x.owner} · {x.phone || 'No phone'} · {x.email || 'No email'}</div><div className="mt-2 flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-stone-100 px-2 py-1">{x.plan} · ₹{Number(x.fee||0).toLocaleString('en-IN')}</span><span className={`rounded-full px-2 py-1 ${expired ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>{expired ? 'Expired' : 'Active'}</span><span className="rounded-full bg-stone-100 px-2 py-1">Expires: {x.expiryDate || 'Not set'}</span><span className="rounded-full bg-stone-100 px-2 py-1">v{x.version || '—'}</span></div><div className="mt-1 text-xs text-stone-500">Licence: {x.licenseKey || 'Not assigned'} · Last payment: {x.lastPayment ? `₹${Number(x.lastPayment).toLocaleString('en-IN')} on ${new Date(x.paymentDate).toLocaleDateString()}` : 'Not recorded'}</div></div><div className="flex flex-wrap gap-1"><button title="Edit" onClick={()=>editMasterCustomer(x)} className="rounded-lg p-2 hover:bg-stone-100"><Pencil size={16}/></button><button title="Delete" onClick={()=>deleteMasterCustomer(x.id)} className="rounded-lg p-2 text-red-600 hover:bg-red-50"><Trash2 size={16}/></button></div></div><div className="mt-3 flex flex-wrap items-end gap-2"><div className="w-32"><Field label="Payment received (₹)"><input className={inputCls} type="number" min="1" value={paymentDraft[x.id] ?? x.fee ?? ''} onChange={e=>setPaymentDraft({...paymentDraft,[x.id]:e.target.value})}/></Field></div><Btn variant="ghost" onClick={()=>recordPayment(x)}><CreditCard size={15}/> Record payment</Btn><span className="text-[11px] text-stone-400"><CalendarDays size={13} className="mr-1 inline"/>Manual record only · no gateway connected</span></div></div>; })}</div> : <div className="rounded-xl bg-stone-50 p-5 text-center text-sm text-stone-500">No customer accounts yet. Add your first restaurant above.</div>}
-      <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"><AlertTriangle size={14} className="mr-1 inline"/>These customer, subscription and payment records are stored in this browser only. Payment recording is manual; it does not verify bank/UPI payments, enforce expiry, or activate licences remotely.</p>
-    </Card>
-
-    <Card className="space-y-4 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2"><div><div className="flex items-center gap-2"><KeyRound size={19}/><h3 className="font-semibold">Subscription key generator</h3></div><p className="mt-1 text-xs text-stone-500">Generate a unique key for one selected restaurant customer, with a plan and expiry date.</p></div><span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold">{subscriptionKeys.length} keys</span></div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Field label="Assign to customer"><select className={inputCls} value={keyCustomer} onChange={e=>setKeyCustomer(e.target.value)}><option value="">Select customer</option>{masterCustomers.map(c=><option key={c.id} value={c.id}>{c.restaurant} · {c.owner}</option>)}</select></Field>
-        <Field label="Subscription plan"><select className={inputCls} value={keyPlan} onChange={e=>setKeyPlan(e.target.value)}><option>Basic</option><option>Standard</option><option>Professional</option><option>Enterprise</option><option>Custom</option></select></Field>
-        <Field label="Key expiry date"><input className={inputCls} type="date" min={new Date().toISOString().slice(0,10)} value={keyExpiry} onChange={e=>setKeyExpiry(e.target.value)}/></Field>
-      </div>
-      <Btn onClick={()=>{
-        const customer = masterCustomers.find(c=>c.id===keyCustomer);
-        if (!customer) return setMessage('Please select the customer who will receive this key.');
-        if (!keyExpiry || keyExpiry < new Date().toISOString().slice(0,10)) return setMessage('Choose a valid future expiry date.');
-        const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-        const random = new Uint8Array(16); window.crypto.getRandomValues(random);
-        const token = Array.from(random, n=>alphabet[n % alphabet.length]).join('');
-        const key = `RESTRO-${token.slice(0,4)}-${token.slice(4,8)}-${token.slice(8,12)}-${token.slice(12,16)}`;
-        const nextKeys = [...subscriptionKeys.filter(k=>!(k.customerId===customer.id && k.status==='Active')), { id:uid('subkey'), key, customerId:customer.id, restaurant:customer.restaurant, plan:keyPlan, createdAt:new Date().toISOString(), expiryDate:keyExpiry, status:'Active' }];
-        s.setSettings({ masterSubscriptionKeys: nextKeys, masterCustomers: masterCustomers.map(c=>c.id===customer.id ? {...c, licenseKey:key, plan:keyPlan, expiryDate:keyExpiry} : c) });
-        setGeneratedKey(key); setMessage(`Subscription key generated and assigned to ${customer.restaurant}.`);
-      }} disabled={!masterCustomers.length}><KeyRound size={16}/> Generate key for selected customer</Btn>
-      {generatedKey&&<div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3"><div><div className="text-xs font-semibold text-emerald-800">New subscription key</div><div className="mt-1 break-all font-mono text-base font-bold tracking-wide text-emerald-950">{generatedKey}</div></div><Btn variant="ghost" onClick={()=>copy(generatedKey)}><Copy size={15}/> Copy key</Btn></div>}
-      {subscriptionKeys.length>0&&<div className="space-y-2">{subscriptionKeys.slice().reverse().map(k=><div key={k.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-stone-200 p-3"><div className="min-w-0 flex-1"><div className="font-mono text-sm font-semibold">{k.key}</div><div className="mt-1 text-xs text-stone-500">{k.restaurant} · {k.plan} · Expires {k.expiryDate} · Created {new Date(k.createdAt).toLocaleDateString()}</div></div><span className={`rounded-full px-2 py-1 text-xs ${k.status==='Active'?'bg-emerald-50 text-emerald-700':'bg-stone-100 text-stone-500'}`}>{k.status}</span><button title="Copy key" onClick={()=>copy(k.key)} className="rounded-lg p-2 hover:bg-stone-100"><Copy size={15}/></button>{k.status==='Active'&&<button title="Revoke key" onClick={()=>{if(window.confirm(`Revoke this key for ${k.restaurant}?`)){s.setSettings({masterSubscriptionKeys:subscriptionKeys.map(x=>x.id===k.id?{...x,status:'Revoked',revokedAt:new Date().toISOString()}:x)});setMessage('Key marked as revoked in this browser.');}}} className="rounded-lg p-2 text-red-600 hover:bg-red-50"><Trash2 size={15}/></button>}</div>)}</div>}
-      <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"><AlertTriangle size={14} className="mr-1 inline"/>Important: these are unique generated subscription codes recorded locally. Because there is no secure server-side activation/verification yet, a customer could copy or modify the app and bypass the key. Do not treat these as production-secure licence keys until a backend validates them.</p>
-    </Card>
+    <CloudAdmin />
 
     <div className="grid gap-4 xl:grid-cols-2">
       <Card className="space-y-3 p-4">
@@ -196,7 +156,7 @@ export default function AdminTab() {
       <div className="flex items-center gap-2"><Activity size={19}/><h3 className="font-semibold">Diagnostics & environment</h3></div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{Object.entries(health).filter(([k])=>k!=='size').map(([k,v])=><div key={k} className="rounded-xl bg-stone-50 p-3"><div className="text-[11px] uppercase text-stone-400">{k}</div><div className="mt-1 text-sm font-semibold">{v}</div></div>)}</div>
       <div className="grid gap-2 text-xs text-stone-500 sm:grid-cols-2"><div><HardDrive size={14} className="mr-1 inline"/>Persistence: browser localStorage + local IndexedDB backups</div><div><ShieldCheck size={14} className="mr-1 inline"/>Authentication: existing staff PIN / role permissions</div><div><Gauge size={14} className="mr-1 inline"/>Runtime: {typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown'}</div><div><Activity size={14} className="mr-1 inline"/>Last local licence activation: {stamp(st.licenseActivatedAt)}</div></div>
-      <p className="text-xs text-stone-500">This console is a client-side developer utility, not a secured server super-admin portal. On Vercel, every browser still has its own local data until a shared backend is added.</p>
+      <p className="text-xs text-stone-500">Customers, licences and payments above live in Supabase behind developer-only row-level security. The tools below act on this browser's local restaurant data only.</p>
     </Card>
     {message&&<div role="status" className="rounded-xl bg-orange-50 p-3 text-sm text-orange-800">{message}</div>}
   </div>;

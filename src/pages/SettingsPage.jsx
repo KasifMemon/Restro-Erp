@@ -6,7 +6,9 @@ import { fileToLogo, uid } from '../utils.js';
 import { receiptDoc, renderHTML, sampleOrder } from '../print.js';
 import PrinterTab from './PrinterTab.jsx';
 import BackupTab from './BackupTab.jsx';
-import DeveloperGate from '../DeveloperGate.jsx';
+import { lazy, Suspense } from 'react';
+import { DEV_BUILD } from '../cloud.js';
+const DeveloperGate = DEV_BUILD ? lazy(() => import('../DeveloperGate.jsx')) : null;
 
 const Toggle = ({ label, checked, onChange, hint }) => (
   <label className="flex cursor-pointer items-start gap-3 py-1.5 text-sm">
@@ -21,7 +23,7 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Settings" sub="Business profile, bill, printers, tables and backups" />
       <div className="no-scrollbar -mx-4 mb-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:px-0">
-        {[['business', 'Business'], ['receipt', 'Bill & receipt'], ['printers', 'Printers'], ['tables', 'Tables'], ['backup', 'Backup & data'], ['admin', 'Business admin']].map(([k, n]) => (
+        {[['business', 'Business'], ['receipt', 'Bill & receipt'], ['printers', 'Printers'], ['tables', 'Tables'], ['backup', 'Backup & data'], ...(DEV_BUILD ? [['admin', 'Business admin']] : [])].map(([k, n]) => (
           <Chip key={k} active={tab === k} onClick={() => setTab(k)}>{n}</Chip>
         ))}
       </div>
@@ -30,7 +32,7 @@ export default function SettingsPage() {
       {tab === 'printers' && <PrinterTab />}
       {tab === 'tables' && <TablesTab />}
       {tab === 'backup' && <BackupTab />}
-      {tab === 'admin' && <DeveloperGate />}
+      {DEV_BUILD && tab === 'admin' && <Suspense fallback={<div className="p-6 text-center text-sm">Loading…</div>}><DeveloperGate /></Suspense>}
     </>
   );
 }

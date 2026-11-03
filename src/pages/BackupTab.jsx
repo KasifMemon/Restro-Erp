@@ -5,6 +5,7 @@ import { useStore } from '../store.jsx';
 import { autoTick, delSnap, downloadBackup, folderForget, folderRequest, folderStatus, folderSupported, getMeta, getSnap, listSnaps, pickFolder, saveSnap, setMeta, shareBackup } from '../backup.js';
 import { ago, downloadBlob, fmtDT } from '../utils.js';
 import { toast } from '../toast.js';
+import CloudBackupCard from './CloudBackupCard.jsx';
 
 const KIND = { auto: ['Auto', 'green'], manual: ['Manual', 'blue'], 'pre-restore': ['Before restore', 'yellow'], 'pre-reset': ['Before reset', 'yellow'] };
 
@@ -117,6 +118,8 @@ export default function BackupTab() {
           ))}
         </div>
       </Card>
+
+      <CloudBackupCard />
 
       <Card className="space-y-3 p-4 lg:col-span-2">
         <h3 className="font-semibold">Reset</h3>
