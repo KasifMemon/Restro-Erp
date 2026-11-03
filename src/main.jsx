@@ -3,11 +3,12 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App.jsx';
 import { StoreProvider } from './store.jsx';
+import LicenseGate from './License.jsx';
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <StoreProvider>
-      <App />
+      <LicenseGate><App /></LicenseGate>
     </StoreProvider>
   </React.StrictMode>
 );

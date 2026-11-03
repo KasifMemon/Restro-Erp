@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import {
   LayoutDashboard, Armchair, ReceiptText, ChefHat, UtensilsCrossed, Package, Truck, Users, UserCog, Wallet,
   BarChart3, Settings as Cog, ScrollText, CalendarClock, Banknote, MoreHorizontal, Lock as LockIcon, X,
@@ -9,21 +9,21 @@ import { ACCESS, ALL, canVoid } from './access.js';
 import Lock from './Lock.jsx';
 import Setup from './Setup.jsx';
 import { autoTick } from './backup.js';
-import Dashboard from './pages/Dashboard.jsx';
-import Tables from './pages/Tables.jsx';
-import POS from './pages/POS.jsx';
-import Kitchen from './pages/Kitchen.jsx';
-import Orders from './pages/Orders.jsx';
-import Reservations from './pages/Reservations.jsx';
-import MenuPage from './pages/MenuPage.jsx';
-import Inventory from './pages/Inventory.jsx';
-import Purchases from './pages/Purchases.jsx';
-import Customers from './pages/Customers.jsx';
-import Staff from './pages/Staff.jsx';
-import Expenses from './pages/Expenses.jsx';
-import DayClose from './pages/DayClose.jsx';
-import Reports from './pages/Reports.jsx';
-import SettingsPage from './pages/SettingsPage.jsx';
+const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
+const Tables = lazy(() => import('./pages/Tables.jsx'));
+const POS = lazy(() => import('./pages/POS.jsx'));
+const Kitchen = lazy(() => import('./pages/Kitchen.jsx'));
+const Orders = lazy(() => import('./pages/Orders.jsx'));
+const Reservations = lazy(() => import('./pages/Reservations.jsx'));
+const MenuPage = lazy(() => import('./pages/MenuPage.jsx'));
+const Inventory = lazy(() => import('./pages/Inventory.jsx'));
+const Purchases = lazy(() => import('./pages/Purchases.jsx'));
+const Customers = lazy(() => import('./pages/Customers.jsx'));
+const Staff = lazy(() => import('./pages/Staff.jsx'));
+const Expenses = lazy(() => import('./pages/Expenses.jsx'));
+const DayClose = lazy(() => import('./pages/DayClose.jsx'));
+const Reports = lazy(() => import('./pages/Reports.jsx'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage.jsx'));
 
 const PAGES = {
   dashboard: ['Dashboard', LayoutDashboard], tables: ['Tables', Armchair], pos: ['Billing', ReceiptText], kitchen: ['Kitchen display', ChefHat],
@@ -153,7 +153,7 @@ export default function App() {
           {lockOn && <button onClick={lock} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50" aria-label="Lock"><LockIcon size={17}/></button>}
         </header>
         <div className={`restro-content min-h-0 flex-1 overflow-y-auto px-4 pb-24 pt-5 sm:px-6 lg:px-8 lg:pb-8 ${cur === 'pos' ? 'pb-4' : ''}`}>
-          <div className="mx-auto w-full max-w-[1600px]">{view}</div>
+          <div className="mx-auto w-full max-w-[1600px]"><Suspense fallback={<div className="p-10 text-center text-sm text-slate-400">Loading…</div>}>{view}</Suspense></div>
         </div>
       </main>
 
