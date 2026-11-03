@@ -1,11 +1,13 @@
 {
   "name": "restro-erp",
   "private": true,
-  "version": "1.5.0",
+  "version": "1.7.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:customer": "VITE_REQUIRE_LICENSE=1 vite build",
+    "build:developer": "VITE_DEV_CONSOLE=1 vite build",
     "preview": "vite preview"
   },
   "dependencies": {
