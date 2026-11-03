@@ -59,6 +59,34 @@ async function userToken() {
   return a.access_token;
 }
 
+/* ---------- forgot / reset password (email link) ---------- */
+export async function requestPasswordReset(email) {
+  const res = await fetch(`${BASE}/auth/v1/recover?redirect_to=${encodeURIComponent(`${location.origin}/`)}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', apikey: ANON }, body: JSON.stringify({ email: email.trim().toLowerCase() }),
+  });
+  if (res.status === 429) throw new Error('Too many requests. Please wait a few minutes and try again.');
+  if (!res.ok && res.status >= 500) throw new Error('Could not send the email right now. Please try again later.');
+  return true; // same answer whether or not the account exists
+}
+/** Reads a recovery link (#access_token=...&type=recovery) once, then removes it from the address bar. */
+export function takeRecoveryLink() {
+  const h = (location.hash || '').replace(/^#/, '');
+  if (!h) return null;
+  const q = new URLSearchParams(h);
+  if (q.get('type') !== 'recovery' && !q.get('error_code')) return null;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch { /* ignore */ }
+  if (q.get('error_code')) return { error: 'This reset link has expired or was already used. Request a new one.' };
+  return { token: q.get('access_token') };
+}
+export async function setNewPassword(token, password) {
+  const res = await fetch(`${BASE}/auth/v1/user`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json', apikey: ANON, Authorization: `Bearer ${token}` }, body: JSON.stringify({ password }),
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(/same|different/i.test(j.msg || j.message || '') ? 'Choose a password different from your old one.' : (j.msg || j.message || 'Could not change the password. Request a new link.'));
+  return true;
+}
+
 async function fn(name, body) {
   const token = await userToken();
   if (!token) return { valid: false, ok: false, reason: 'auth' };

@@ -51,3 +51,9 @@ Customers sign in with their own account, then enter their licence key once, the
 - Staff inside a restaurant keep using the PIN lock (works offline).
 - **Turn off public sign-ups** (Supabase -> Authentication -> Sign In / Providers -> "Allow new users to sign up" off). Customers are created only by you.
 - Server functions: `verify-license`, `cloud-backup` (customer account required), `create-customer-account` (developer only).
+
+## Forgot password by email (one-time Supabase settings)
+1. Supabase -> Authentication -> **URL Configuration**: set **Site URL** to `https://restro-erp-customer.vercel.app` and add the same URL (with `/`) under **Redirect URLs**.
+2. Supabase -> Authentication -> **Emails -> SMTP Settings**: enable **Custom SMTP** (for example Resend or Brevo). Supabase's built-in email only reaches your own team members and is limited to a few per hour, so customers will not receive reset emails without this.
+3. Optional: edit the "Reset password" email template to your brand.
+Until this is done, use **Business admin -> Customers -> Reset password**.

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { KeyRound, ShieldAlert, Clock } from 'lucide-react';
 import Login from './Login.jsx';
-import { LICENSE_REQUIRED, REASON_TEXT, customerSession, cloudBackup, getCloudMeta, licenseVerdict, setCloudMeta, verifyLicense, getLicenseCache } from './cloud.js';
+import ResetPassword from './ResetPassword.jsx';
+import { LICENSE_REQUIRED, REASON_TEXT, customerSession, takeRecoveryLink, cloudBackup, getCloudMeta, licenseVerdict, setCloudMeta, verifyLicense, getLicenseCache } from './cloud.js';
 import { useStore } from './store.jsx';
 import { Btn, inputCls } from './components.jsx';
 
@@ -37,6 +38,13 @@ export default function LicenseGate({ children }) {
   const setupDone = data.settings.setupDone;
   const [verdict, setVerdict] = useState(() => (LICENSE_REQUIRED ? licenseVerdict() : { state: 'ok' }));
   const [asking, setAsking] = useState(false);
+  const [recovery, setRecovery] = useState(() => (LICENSE_REQUIRED ? takeRecoveryLink() : null));
+  useEffect(() => {
+    if (!LICENSE_REQUIRED) return undefined;
+    const onHash = () => { const r = takeRecoveryLink(); if (r) setRecovery(r); };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
   const [session, setSession] = useState(() => (LICENSE_REQUIRED ? customerSession() : null));
   useEffect(() => {
     const h = () => { setSession(customerSession()); setVerdict(LICENSE_REQUIRED ? licenseVerdict() : { state: 'ok' }); };
@@ -87,6 +95,7 @@ export default function LicenseGate({ children }) {
   }, [verdict.state]);
 
   if (!LICENSE_REQUIRED) return children;
+  if (recovery) return <ResetPassword link={recovery} onDone={() => setRecovery(null)} />;
   if (!session) return <Login onDone={() => setSession(customerSession())} />;
   if (verdict.state === 'blocked' || asking) return <Activate verdict={asking ? { key: verdict.key } : verdict} onDone={() => { setAsking(false); setVerdict(licenseVerdict()); refresh(); }} />;
 
