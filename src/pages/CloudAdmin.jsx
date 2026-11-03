@@ -85,6 +85,12 @@ export default function CloudAdmin() {
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${l.status === 'active' && !expired ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>{expired && l.status === 'active' ? 'expired' : l.status}</span>
             <button onClick={() => copy(l.license_key)} aria-label="Copy key"><Copy size={14} /></button><button onClick={() => share(l)} aria-label="Send on WhatsApp"><MessageCircle size={14} /></button></div>
           <div className="mt-1 text-xs text-stone-500">{l.customers?.restaurant} · {l.plan} · until {l.expires_on} · devices {l.license_devices?.length || 0}/{l.max_devices}</div>
+          {l.profile ? <div className="mt-2 rounded-lg bg-stone-50 p-2 text-xs text-stone-600">
+            <div><b>Setup:</b> {l.profile.setup_done ? 'completed' : 'not finished'} · {l.profile.name || 'no name'} {l.profile.phone ? '· ' + l.profile.phone : ''}</div>
+            {(l.profile.address || l.profile.gstin) && <div>{l.profile.address} {l.profile.gstin ? '· GSTIN ' + l.profile.gstin : ''}</div>}
+            <div>Tables {l.profile.tables} · Menu items {l.profile.menu} · Staff {l.profile.staff} · Bills {l.profile.bills}</div>
+            <div className="text-stone-400">Last seen {l.profile_updated_at ? new Date(l.profile_updated_at).toLocaleString() : ''}</div>
+          </div> : <div className="mt-2 text-xs text-stone-400">Not activated yet</div>}
           <div className="mt-2 flex flex-wrap gap-1.5">
             <Btn size="sm" variant="ghost" onClick={() => patchLicense(l.id, { expires_on: plusYear(expired ? today() : l.expires_on) }, 'Renewed for 1 year.')}>Renew +1 year</Btn>
             <Btn size="sm" variant="ghost" onClick={() => patchLicense(l.id, { expires_on: plusMonth(expired ? today() : l.expires_on) }, 'Extended by 1 month.')}>+1 month</Btn>

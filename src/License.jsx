@@ -32,14 +32,25 @@ function Activate({ verdict, onDone }) {
 }
 
 export default function LicenseGate({ children }) {
-  const { get } = useStore();
+  const { data, get, setSettings } = useStore();
+  const setupDone = data.settings.setupDone;
   const [verdict, setVerdict] = useState(() => (LICENSE_REQUIRED ? licenseVerdict() : { state: 'ok' }));
   const [asking, setAsking] = useState(false);
 
   const refresh = useCallback(async () => {
     const c = getLicenseCache();
-    if (c?.key) await verifyLicense(c.key);
+    if (c?.key) {
+      const d = get(); const st = d.settings;
+      await verifyLicense(c.key, {
+        name: st.name, address: st.address, phone: st.phone, gstin: st.gstin, fssai: st.fssai, setup_done: st.setupDone,
+        tables: d.tables.length, menu: d.menu.length, staff: d.staff.length, orders: d.orders.length, bills: d.orders.filter((o) => o.status === 'paid').length,
+      });
+      // First run: pre-fill the restaurant name from the licence so setup starts with it
+      const r = getLicenseCache()?.result;
+      if (r?.valid && r.restaurant && !st.setupDone && st.name !== r.restaurant) setSettings({ name: r.restaurant });
+    }
     setVerdict(licenseVerdict());
+    // eslint-disable-next-line
   }, []);
 
   useEffect(() => {
@@ -50,6 +61,9 @@ export default function LicenseGate({ children }) {
     document.addEventListener('visibilitychange', vis);
     return () => { clearInterval(iv); document.removeEventListener('visibilitychange', vis); };
   }, [refresh]);
+
+  // Send the finished setup details to the provider as soon as the wizard completes
+  useEffect(() => { if (LICENSE_REQUIRED && setupDone) refresh(); }, [setupDone, refresh]);
 
   // Daily automatic cloud backup while the licence is good
   useEffect(() => {

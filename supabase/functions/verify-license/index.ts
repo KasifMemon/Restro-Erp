@@ -18,6 +18,7 @@ Deno.serve(async (req) => {
   const deviceId = String(body?.device_id ?? '').slice(0, 80);
   const label = String(body?.label ?? '').slice(0, 80);
   const appVersion = String(body?.app_version ?? '').slice(0, 20);
+  const rawProfile = body?.profile && typeof body.profile === 'object' ? body.profile : null;
   if (!/^RESTRO-[A-Z0-9]{6,12}$/.test(key) || deviceId.length < 8) {
     return json({ valid: false, reason: 'bad_key' });
   }
@@ -52,5 +53,16 @@ Deno.serve(async (req) => {
     { license_id: lic.id, device_id: deviceId, label, app_version: appVersion, last_seen: new Date().toISOString() },
     { onConflict: 'license_id,device_id' },
   );
+  if (rawProfile) {
+    const str = (v: unknown, n = 120) => String(v ?? '').slice(0, n);
+    const num = (v: unknown) => Math.max(0, Math.min(1e7, Number(v) || 0));
+    const profile = {
+      name: str(rawProfile.name), address: str(rawProfile.address, 200), phone: str(rawProfile.phone, 20),
+      gstin: str(rawProfile.gstin, 20), fssai: str(rawProfile.fssai, 20),
+      setup_done: Boolean(rawProfile.setup_done), tables: num(rawProfile.tables), menu: num(rawProfile.menu),
+      staff: num(rawProfile.staff), orders: num(rawProfile.orders), bills: num(rawProfile.bills),
+    };
+    await db.from('licenses').update({ profile, profile_updated_at: new Date().toISOString() }).eq('id', lic.id);
+  }
   return json({ valid: true, ...base });
 });

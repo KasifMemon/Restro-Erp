@@ -46,10 +46,10 @@ export function trialInfo() {
 }
 
 /** Ask the server about a key. Updates the local cache. Returns the server answer or { offline:true }. */
-export async function verifyLicense(key) {
+export async function verifyLicense(key, profile) {
   let r;
   try {
-    r = await fn('verify-license', { key, device_id: deviceId(), label: deviceLabel(), app_version: APP_VERSION });
+    r = await fn('verify-license', { key, device_id: deviceId(), label: deviceLabel(), app_version: APP_VERSION, profile });
   } catch { return { offline: true }; }
   if (r && typeof r.valid === 'boolean') {
     write('restro-license-v1', { key, result: r, lastCheck: Date.now(), lastOk: r.valid ? Date.now() : (getLicenseCache()?.lastOk || 0), seen: Date.now() });
