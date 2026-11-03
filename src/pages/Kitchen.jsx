@@ -4,6 +4,7 @@ import { Btn, Card, Empty, PageHeader } from '../components.jsx';
 import { useStore } from '../store.jsx';
 import { fmtTime } from '../utils.js';
 import { printKOT } from '../print.js';
+import { audioSupported, ding, unlockAudio, audioReady } from '../sound.js';
 
 const COLS = [
   ['new', 'New', 'border-red-200 bg-red-50', 'Start cooking', 'preparing'],
@@ -18,28 +19,28 @@ export default function Kitchen() {
   useEffect(() => { const i = setInterval(() => tick((x) => x + 1), 20000); return () => clearInterval(i); }, []);
   const mins = (ts) => Math.max(0, Math.round((Date.now() - ts) / 60000));
   const active = data.kots.filter((k) => k.status !== 'served');
-  const [sound, setSound] = useState(true);
-  const prevNew = useRef(active.filter((k) => k.status === 'new').length);
-  const newCount = active.filter((k) => k.status === 'new').length;
+  const [sound, setSound] = useState(() => { try { return localStorage.getItem('restro-kitchen-sound') !== 'off'; } catch { return true; } });
+  const [ready, setReady] = useState(audioReady());
+  useEffect(() => { const i = setInterval(() => setReady(audioReady()), 700); return () => clearInterval(i); }, []);
+  // Ring for every ticket that is new and not seen before (also when it arrives from another device)
+  const seen = useRef(new Set(active.filter((k) => k.status === 'new').map((k) => k.id)));
+  const newIds = active.filter((k) => k.status === 'new').map((k) => k.id);
+  const key = newIds.join(',');
   useEffect(() => {
-    if (sound && newCount > prevNew.current) {
-      try {
-        const ac = new (window.AudioContext || window.webkitAudioContext)();
-        [880, 1175].forEach((f, i) => {
-          const o = ac.createOscillator(), g = ac.createGain();
-          o.frequency.value = f; o.connect(g); g.connect(ac.destination);
-          g.gain.setValueAtTime(0.2, ac.currentTime + i * 0.18); g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + i * 0.18 + 0.16);
-          o.start(ac.currentTime + i * 0.18); o.stop(ac.currentTime + i * 0.18 + 0.17);
-        });
-      } catch (e) { /* ignore */ }
-    }
-    prevNew.current = newCount;
-  }, [newCount, sound]);
+    const fresh = newIds.filter((id) => !seen.current.has(id));
+    if (fresh.length && sound) ding();
+    newIds.forEach((id) => seen.current.add(id));
+    // eslint-disable-next-line
+  }, [key, sound]);
+  const toggle = () => { const n = !sound; setSound(n); try { localStorage.setItem('restro-kitchen-sound', n ? 'on' : 'off'); } catch { /* ignore */ } if (n) { unlockAudio(); ding(); } };
 
   return (
     <>
       <PageHeader title="Kitchen Display" sub={`${active.length} active tickets`}>
-        <Btn variant="ghost" size="sm" onClick={() => setSound(!sound)}>{sound ? <Volume2 size={15} /> : <VolumeX size={15} />} {sound ? 'Sound on' : 'Muted'}</Btn>
+        {sound && !ready && audioSupported()
+          ? <Btn size="sm" onClick={() => { unlockAudio(); ding(); setReady(audioReady()); }}><Volume2 size={15} /> Tap to enable sound</Btn>
+          : <Btn variant="ghost" size="sm" onClick={toggle}>{sound ? <Volume2 size={15} /> : <VolumeX size={15} />} {sound ? 'Sound on' : 'Muted'}</Btn>}
+        {sound && ready && <Btn variant="ghost" size="sm" onClick={ding}>Test</Btn>}
       </PageHeader>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {COLS.map(([st, title, cls, btn, next]) => {

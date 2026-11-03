@@ -4,6 +4,8 @@ import './index.css';
 import App from './App.jsx';
 import { StoreProvider } from './store.jsx';
 import LicenseGate from './License.jsx';
+import { installAutoUnlock } from './sound.js';
+installAutoUnlock();
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
