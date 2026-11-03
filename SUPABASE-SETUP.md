@@ -57,3 +57,10 @@ Customers sign in with their own account, then enter their licence key once, the
 2. Supabase -> Authentication -> **Emails -> SMTP Settings**: enable **Custom SMTP** (for example Resend or Brevo). Supabase's built-in email only reaches your own team members and is limited to a few per hour, so customers will not receive reset emails without this.
 3. Optional: edit the "Reset password" email template to your brand.
 Until this is done, use **Business admin -> Customers -> Reset password**.
+
+## v3.9: live device sync
+Every record (orders, menu, tables, KOTs, stock, customers, staff, settings...) is a row in `public.sync_records`, protected by row-level security (`can_sync()`: only the customer who owns an active licence). Devices push changes within ~2 s and pull every ~5 s. A new device joins automatically; a device that already has data is asked whether to use the online data or combine.
+- Last write wins per record. Two devices editing the same bill at the same moment: the later save wins.
+- Bill/KOT/order numbers sync as per-device counters merged by max; two devices billing within the same few seconds can still produce the same number.
+- Printer settings, licence data and auto-backup options stay per device.
+- Deleted records sync as tombstones. Free Supabase plans pause after inactivity and have size limits; use a paid plan for production.

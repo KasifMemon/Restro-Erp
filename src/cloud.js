@@ -219,3 +219,18 @@ export async function devFn(name, body) {
   return res.json();
 }
 export const CUSTOMER_URL = import.meta.env.VITE_CUSTOMER_URL || 'https://restro-erp-customer.vercel.app';
+
+/** PostgREST call as the signed-in customer (row-level security limits it to their own licence). */
+export async function userRest(path, { method = 'GET', body, prefer } = {}) {
+  const token = await userToken();
+  if (!token) { const e = new Error('auth'); e.status = 401; throw e; }
+  const res = await fetch(`${BASE}/rest/v1/${path}`, {
+    method,
+    headers: { apikey: ANON, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(prefer ? { Prefer: prefer } : {}) },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const text = await res.text();
+  const j = text ? JSON.parse(text) : null;
+  if (!res.ok) { const e = new Error(j?.message || `Request failed (${res.status})`); e.status = res.status; throw e; }
+  return j;
+}

@@ -39,6 +39,7 @@ Deno.serve(async (req) => {
 
   const today = new Date().toISOString().slice(0, 10);
   const base = {
+    license_id: lic.id,
     plan: lic.plan,
     expires_on: lic.expires_on,
     restaurant: (lic as any).customers?.restaurant ?? '',

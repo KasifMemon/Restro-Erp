@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { KeyRound, ShieldAlert, Clock } from 'lucide-react';
 import Login from './Login.jsx';
 import ResetPassword from './ResetPassword.jsx';
 import { LICENSE_REQUIRED, REASON_TEXT, customerSession, takeRecoveryLink, cloudBackup, getCloudMeta, licenseVerdict, setCloudMeta, verifyLicense, getLicenseCache } from './cloud.js';
 import { useStore } from './store.jsx';
+import { pokeSync, resolveSyncChoice, startSync, useSyncStatus } from './sync.js';
 import { Btn, inputCls } from './components.jsx';
 
 function Activate({ verdict, onDone }) {
@@ -34,7 +35,10 @@ function Activate({ verdict, onDone }) {
 }
 
 export default function LicenseGate({ children }) {
-  const { data, get, setSettings } = useStore();
+  const { data, get, update, setSettings } = useStore();
+  const storeRef = useRef({ get, update });
+  storeRef.current = { get, update };
+  const sync = useSyncStatus();
   const setupDone = data.settings.setupDone;
   const [verdict, setVerdict] = useState(() => (LICENSE_REQUIRED ? licenseVerdict() : { state: 'ok' }));
   const [asking, setAsking] = useState(false);
@@ -78,6 +82,14 @@ export default function LicenseGate({ children }) {
     return () => { clearInterval(iv); document.removeEventListener('visibilitychange', vis); };
   }, [refresh, session]);
 
+  // Live multi-device sync while the licence is good
+  const licenseId = verdict.r?.license_id;
+  useEffect(() => {
+    if (!LICENSE_REQUIRED || !session || !licenseId || !['ok', 'grace'].includes(verdict.state)) return undefined;
+    return startSync({ licenseId, store: { get: () => storeRef.current.get(), update: (fn) => storeRef.current.update(fn) } });
+  }, [licenseId, session, verdict.state]);
+  useEffect(() => { if (LICENSE_REQUIRED) pokeSync(); }, [data]);
+
   // Send the finished setup details to the provider as soon as the wizard completes
   useEffect(() => { if (LICENSE_REQUIRED && setupDone) refresh(); }, [setupDone, refresh]);
 
@@ -104,6 +116,15 @@ export default function LicenseGate({ children }) {
     : verdict.daysLeft <= 7 ? `Subscription ends in ${Math.max(0, verdict.daysLeft)} day${verdict.daysLeft === 1 ? '' : 's'}` : '';
   return <>
     {children}
+    {sync.state === 'needs_choice' && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4">
+      <div className="w-full max-w-sm space-y-3 rounded-3xl bg-white p-6 shadow-2xl">
+        <h2 className="text-lg font-bold text-slate-800">This restaurant already has data online</h2>
+        <p className="text-sm text-slate-500">Another device has already saved menu, tables and bills. How should this device join?</p>
+        <Btn className="w-full" size="lg" onClick={() => resolveSyncChoice('cloud')}>Use the online data (recommended)</Btn>
+        <p className="text-[11px] text-slate-400">This device's current data is replaced. A safety backup is saved first.</p>
+        <Btn className="w-full" variant="ghost" onClick={() => resolveSyncChoice('merge')}>Combine this device's data with the online data</Btn>
+      </div>
+    </div>}
     {warn && <button onClick={() => setAsking(true)} className="fixed bottom-20 right-3 z-40 flex items-center gap-1.5 rounded-full bg-amber-500 px-3 py-2 text-xs font-semibold text-white shadow-lg lg:bottom-4"><Clock size={13} />{warn}{verdict.state === 'trial' ? ' · Activate' : ''}</button>}
   </>;
 }
