@@ -1,0 +1,16 @@
+name: Supabase keep-alive
+# Free Supabase projects pause after ~7 days of no activity. This pings the
+# database twice a week so the licence server never goes to sleep.
+on:
+  schedule:
+    - cron: '17 6 * * 1,4'
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call keepalive()
+        run: |
+          curl -fsS -X POST "https://xlgihybgxfoltwcjgdcu.supabase.co/rest/v1/rpc/keepalive" \
+            -H "apikey: sb_publishable_mECHryco1t2oJFLxwblcYw__o-95stZ" \
+            -H "Content-Type: application/json" -d '{}'
